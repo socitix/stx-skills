@@ -130,7 +130,15 @@ A new worktree was created for this fix:
 - Branch: `bugfix/{{worktree_name}}`
 - `.env.local` has been symlinked from the main worktree if applicable.
 
-All work below happens **inside that worktree**.
+The orchestrator MUST switch into the worktree before any other step:
+
+```bash
+cd .claude/worktrees/{{worktree_name}}
+git rev-parse --abbrev-ref HEAD    # must NOT be main/master
+git rev-parse --show-toplevel      # must equal $(pwd)
+```
+
+All work below happens **inside that worktree**. QA and Coder subagents receive the absolute worktree path and must not edit the main checkout.
 {{/if}}
 
 ## 1. The issues

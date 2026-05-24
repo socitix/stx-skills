@@ -1,7 +1,7 @@
 ---
 name: stx-feature
 description: Drives a multi-agent feature implementation wave. Interviews the user, runs Analyst → Architect → QA in sequence (each behind a gate), then schedules tier-specialized Dev agents under a Reviewer + QA control loop. Produces requirement-verse.html, architecture-verse.html, qa-verse.html, and result.html artifacts in docs/waves/. Use when a new feature (multi-task, possibly multi-tier) needs to be implemented, not a single bug fix.
-version: 1.2.0
+version: 1.2.1
 author: STX
 ---
 
@@ -95,6 +95,28 @@ git worktree add .claude/worktrees/wave-<slug> -b feat/wave-<slug>
 ln -sf <main-repo>/.env.local .claude/worktrees/wave-<slug>/.env.local  # if applicable
 ```
 
+### Step 0.5 — Switch session into the worktree (mandatory)
+
+After creating or confirming a worktree, **before any file write, interview question, or agent spawn**:
+
+```bash
+MAIN="$(git rev-parse --show-toplevel)"
+WT=".claude/worktrees/wave-<slug>"   # or existing worktree path
+cd "$WT"
+git rev-parse --abbrev-ref HEAD       # must NOT be main or master
+git rev-parse --show-toplevel         # must equal $(pwd)
+```
+
+- If branch is `main` / `master` → **halt**. Do not proceed.
+- Print: `Working in <branch> at <abs-path>`.
+- Capture for `wave-state.json`: `worktree_path` (abs), `branch`, `main_worktree_path` (= `$MAIN`).
+- All shell commands for the rest of this wave run from `$WT` (or use `git -C "$WT"` / absolute paths under it).
+- **Cursor note:** switching shell cwd does not change the IDE workspace folder. Step 0.5 is still required — do not write wave artifacts from the main checkout.
+
+When spawning any subagent (Analyst through Dev), **prepend** this block to the task prompt:
+
+> **Worktree:** `<worktree_path>`. All reads, writes, and shell commands MUST run from this directory (or use `git -C` / absolute paths under it). Do not edit files in the main checkout at `<main_worktree_path>`.
+
 ### Step 1 — Capture initial feature description
 
 The user MAY invoke the skill with a feature description, e.g.:
@@ -107,7 +129,7 @@ If so, take the argument as `initial_request`. Otherwise, ask the user one open 
 
 This is the **seed** for everything downstream. Subsequent agents add clarity; they do not replace it.
 
-Also at this step: record the persona versions that will drive the wave. Read the YAML frontmatter of every persona file under `.claude/agents/` and write a `persona_versions` block to `wave-state.json`:
+Also at this step: record the persona versions that will drive the wave. Read the YAML frontmatter of every persona file under `.claude/agents/` and write a `persona_versions` block to `wave-state.json`. Also write `worktree_path`, `branch`, and `main_worktree_path` from Step 0.5:
 
 ```json
 "persona_versions": {
@@ -127,7 +149,7 @@ This locks the wave to a specific persona snapshot — essential for future cros
 
 ### Step 2 — Analyst (Agent 1)
 
-**Spawn:** `Agent` with `subagent_type: general-purpose` (or `Explore` for read-only research first if scoping is unclear). Paste the contents of `.claude/agents/stx-analyst.md` into the agent's prompt verbatim, then append:
+**Spawn:** `Agent` with `subagent_type: general-purpose` (or `Explore` for read-only research first if scoping is unclear). Prepend the **Worktree** block from Step 0.5, paste the contents of `.claude/agents/stx-analyst.md` into the agent's prompt verbatim, then append:
 
 > The current wave-state is at `<path-to-wave-state.json>`. The initial request is: `<initial_request>`. The bundled template for requirement-verse.html is at `<path-to-templates/requirement-verse.html>`.
 
@@ -137,7 +159,7 @@ The Analyst follows the contract in its persona file. Do not embed contract logi
 
 ### Step 3 — Architect (Agent 2)
 
-**Spawn:** `Agent` with `subagent_type: general-purpose`. Paste the contents of `.claude/agents/stx-architect.md` into the agent's prompt verbatim, then append:
+**Spawn:** `Agent` with `subagent_type: general-purpose`. Prepend the **Worktree** block from Step 0.5, paste the contents of `.claude/agents/stx-architect.md` into the agent's prompt verbatim, then append:
 
 > The approved requirement-verse.html is at `<path>`. The current wave-state is at `<path>`. The bundled template for architecture-verse.html is at `<path>`.
 
@@ -147,7 +169,7 @@ The Architect follows the contract in its persona file.
 
 ### Step 4 — QA Agent (Agent 3)
 
-**Spawn:** `Agent` with `subagent_type: general-purpose`. Paste the contents of `.claude/agents/stx-qa.md` into the agent's prompt verbatim, then append:
+**Spawn:** `Agent` with `subagent_type: general-purpose`. Prepend the **Worktree** block from Step 0.5, paste the contents of `.claude/agents/stx-qa.md` into the agent's prompt verbatim, then append:
 
 > The approved requirement-verse.html and architecture-verse.html are at `<paths>`. The current wave-state is at `<path>`. The bundled template for qa-verse.html is at `<path>`.
 
@@ -175,7 +197,7 @@ After gate 3 approval, the orchestrator schedules Dev agents.
 | `api` | `.claude/agents/stx-dev-base.md` + `.claude/agents/stx-dev-tier-api.md` |
 | `ui` | `.claude/agents/stx-dev-base.md` + `.claude/agents/stx-dev-tier-ui.md` |
 
-After concatenating the two persona files, append the task-specific context:
+After concatenating the two persona files, prepend the **Worktree** block from Step 0.5, then append the task-specific context:
 
 > Your task is `<task.id> — <task.title>`. The failing test is at `<task.test_path>`. `scope_paths`: `<task.scope_paths>`. `existing_patterns_to_follow`: `<task.existing_patterns_to_follow>`. The architecture-verse.html with the frozen out-of-scope list is at `<path>`.
 
@@ -204,7 +226,7 @@ QA reruns test independently      ← .claude/agents/stx-qa.md verification cont
 
 **Why the Reviewer sits between Dev and QA.** Without a Reviewer, QA's rerun is the only signal between "Dev says done" and "task closed." A Dev that mocks the system-under-test or weakens the assertion can drive QA green and bypass the test the bug was written to catch. The Reviewer is the integrity gate: it reads the diff, line-by-line, before QA touches it. Its verdict is appended to `wave-state.json.reviewer_verdicts[]` per iteration.
 
-**Spawning the Reviewer.** After every Dev hand-back, spawn the Reviewer via `Agent` with `subagent_type: general-purpose`. Paste the contents of `.claude/agents/stx-reviewer.md` verbatim, then append:
+**Spawning the Reviewer.** After every Dev hand-back, spawn the Reviewer via `Agent` with `subagent_type: general-purpose`. Prepend the **Worktree** block from Step 0.5, paste the contents of `.claude/agents/stx-reviewer.md` verbatim, then append:
 
 > The Dev's diff (full output of `git diff` since the last accepted state) is below. The task spec is at `<path-to-architecture-verse.html>`, task id `<task.id>`. The failing test file is at `<task.test_path>`. Prior reviewer_verdicts[] for this task: `<json>`. Apply your checklist and emit your verdict per the persona contract.
 
@@ -266,6 +288,7 @@ The skill stops and surfaces — never silently continues — when:
 ```
 /stx-feature                                    # Fully interactive
 /stx-feature <one-line feature description>     # Seed initial_request, then interactive
+/stx-feature --resume <wave-id>                 # (planned) Re-read wave-state.json, cd to worktree_path, re-run Step 0.5 verify, continue from saved status
 ```
 
 This skill does not have a CLI binary — it is purely conversational and runs inside the assistant. The skill writes to disk: `docs/waves/wave-<slug>-<xxxx>/` in the consuming project.

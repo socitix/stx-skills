@@ -3,23 +3,21 @@
 /**
  * stx-skills installer
  *
- * Invoked as the default `stx-skills` bin, so:
- *
- *     npx ../stx-skills                # install into current working dir
- *     npx /abs/path/stx-skills         # install into current working dir
- *     npx ../stx-skills /target/dir    # install into explicit target
- *     npx ../stx-skills --link         # symlink for live updates
- *     npx ../stx-skills --list         # just show what's available
- *
- * Works without publishing to npm — npx happily resolves a local path,
- * runs the bin that matches the package name, and caches the build.
+ *     npx ../stx-skills                # Claude Code → .claude/
+ *     npx ../stx-skills --cursor       # Cursor IDE → .cursor/ (transformed)
+ *     npx ../stx-skills --both         # both targets
+ *     npx ../stx-skills --link         # symlink (Claude skills only; see help)
  */
 
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  addCursorSkillFrontmatter,
+  shouldTransformForCursor,
+  transformForCursor,
+} from './cursor-transform';
 
-// Compiled location: dist/cli/install.js → package root is two levels up
 const PACKAGE_ROOT = path.resolve(__dirname, '..', '..');
 
 const Colors = {
@@ -41,17 +39,19 @@ const c = {
   dim: (s: string) => `${Colors.dim}${s}${Colors.reset}`,
 };
 
+type Platform = 'claude' | 'cursor';
+
 interface Options {
   target: string;
   link: boolean;
   list: boolean;
   help: boolean;
-  skills: string[];   // explicit list, empty = install all
+  skills: string[];
+  platforms: Platform[];
 }
 
-// Accept these words as a leading no-op subcommand so natural-language
-// invocations like `npx ../stx-skills install` and `... refresh` just work.
 const SUBCOMMAND_NOOPS = new Set(['install', 'refresh', 'update', 'sync']);
+const STX_AGENT_PREFIX = 'stx-';
 
 function parseArgs(args: string[]): Options {
   const options: Options = {
@@ -60,6 +60,7 @@ function parseArgs(args: string[]): Options {
     list: false,
     help: false,
     skills: [],
+    platforms: ['claude'],
   };
 
   let targetSet = false;
@@ -75,6 +76,12 @@ function parseArgs(args: string[]): Options {
         break;
       case '--list':
         options.list = true;
+        break;
+      case '--cursor':
+        options.platforms = ['cursor'];
+        break;
+      case '--both':
+        options.platforms = ['claude', 'cursor'];
         break;
       case '--skill':
         if (args[i + 1]) options.skills.push(args[++i]);
@@ -92,41 +99,51 @@ function parseArgs(args: string[]): Options {
   return options;
 }
 
+function platformLabel(p: Platform): string {
+  return p === 'claude' ? '.claude/' : '.cursor/';
+}
+
+function skillsDest(target: string, platform: Platform): string {
+  return path.join(target, platform === 'claude' ? '.claude' : '.cursor', 'skills');
+}
+
+function agentsDest(target: string, platform: Platform): string {
+  return path.join(target, platform === 'claude' ? '.claude' : '.cursor', 'agents');
+}
+
 function showHelp(): void {
   console.log(`
-${c.bold('stx-skills')} — installer for organization-wide Claude Code skills
+${c.bold('stx-skills')} — installer for organization-wide Claude Code & Cursor skills
 
 ${c.bold('USAGE')}
   npx <path-to-stx-skills> [options] [target-dir]
 
 ${c.bold('OPTIONS')}
-  --link              Symlink skills instead of copying (live updates)
+  --cursor            Install to .cursor/skills/ + .cursor/agents/ (Cursor transforms)
+  --both              Install to both .claude/ and .cursor/
+  --link              Symlink Claude skills (dev mode; Cursor always copies)
   --skill <name>      Install/refresh only the named skill (repeatable)
   --list              List available skills and exit
   -h, --help          Show this help
 
 ${c.bold('EXAMPLES')}
-  npx ../stx-skills                         # refresh all skills into cwd
-  npx ../stx-skills ~/projects/my-app       # refresh skills in an explicit target
-  npx ../stx-skills --link                  # symlink (dev mode)
-  npx ../stx-skills --skill stx-image    # refresh one skill only
-  npx ../stx-skills --list                  # inspect what's available
+  npx ../stx-skills                         # Claude Code (default)
+  npx ../stx-skills --cursor                # Cursor IDE only
+  npx ../stx-skills --both                  # both IDEs, one command
+  npx ../stx-skills --both ~/projects/app   # explicit target
+  npx ../stx-skills --cursor --skill stx-feature
+  npx ../stx-skills --list
 
 ${c.bold('HOW IT WORKS')}
-  Running the installer always refreshes: existing skill directories in the
-  target are wiped and replaced with the latest from this package. stx-skills
-  is the source of truth for skill content, so re-running the installer is
-  the supported way to pull updates.
+  Source of truth: <package>/.claude/skills/ and .claude/agents/ (Claude-native).
 
-  The package is not published to npm. npx resolves the local path, runs
-  this installer, and copies each skill directory from
-  <package>/.claude/skills/<skill> into <target>/.claude/skills/<skill>,
-  with the compiled JS dropped alongside each SKILL.md.
+  Default install copies to <target>/.claude/ unchanged.
+  --cursor applies install-time transforms (paths, Task tool, AskQuestion,
+  named subagent types) and writes to <target>/.cursor/.
+  --both runs both passes.
 
-  Personas (.claude/agents/*.md) — the contracts spawned by /stx-feature and
-  /stx-fix — are copied to <target>/.claude/agents/ alongside the skills. The
-  full-install path copies the whole personas directory; --skill <name> skips
-  personas because they're shared infrastructure, not skill-scoped.
+  Personas: only stx-*.md files are managed — other agent files in the
+  target are preserved on refresh.
 `);
 }
 
@@ -153,46 +170,107 @@ function copyFileSyncSafe(src: string, dest: string): void {
   fs.copyFileSync(src, dest);
 }
 
-function copyDirRecursive(src: string, dest: string): void {
+function writeTextFile(dest: string, content: string): void {
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.writeFileSync(dest, content, 'utf8');
+}
+
+function processFileContent(
+  content: string,
+  filename: string,
+  platform: Platform,
+  isSkillMd: boolean,
+): string {
+  if (platform !== 'cursor' || !shouldTransformForCursor(filename)) {
+    return content;
+  }
+  let out = transformForCursor(content);
+  if (isSkillMd && filename === 'SKILL.md') {
+    out = addCursorSkillFrontmatter(out);
+  }
+  return out;
+}
+
+function copyDirRecursive(
+  src: string,
+  dest: string,
+  platform: Platform,
+  skillRoot = false,
+): void {
   fs.mkdirSync(dest, { recursive: true });
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
     const s = path.join(src, entry.name);
     const d = path.join(dest, entry.name);
-    if (entry.isDirectory()) copyDirRecursive(s, d);
-    else if (entry.isFile()) fs.copyFileSync(s, d);
+    if (entry.isDirectory()) {
+      copyDirRecursive(s, d, platform, false);
+    } else if (entry.isFile()) {
+      if (platform === 'cursor' && shouldTransformForCursor(entry.name)) {
+        const raw = fs.readFileSync(s, 'utf8');
+        writeTextFile(d, processFileContent(raw, entry.name, platform, skillRoot));
+      } else {
+        fs.copyFileSync(s, d);
+      }
+    }
   }
 }
 
-function installAgents(target: string, options: Options): { count: number; action: 'added' | 'updated' | 'linked' | 'skipped' } {
+function installAgents(
+  target: string,
+  options: Options,
+  platform: Platform,
+): { count: number; action: 'added' | 'updated' | 'linked' | 'skipped' } {
   const srcDir = path.join(PACKAGE_ROOT, '.claude', 'agents');
-  const destDir = path.join(target, '.claude', 'agents');
+  const destDir = agentsDest(target, platform);
 
   if (!fs.existsSync(srcDir)) return { count: 0, action: 'skipped' };
 
-  const personaFiles = fs.readdirSync(srcDir).filter(f => f.endsWith('.md'));
+  const personaFiles = fs.readdirSync(srcDir).filter(f => f.endsWith('.md') && f.startsWith(STX_AGENT_PREFIX));
   if (personaFiles.length === 0) return { count: 0, action: 'skipped' };
 
-  const existed = fs.existsSync(destDir);
-
-  if (options.link) {
-    if (existed) {
-      try { fs.rmSync(destDir, { recursive: true, force: true }); } catch { /* ignore */ }
+  if (options.link && platform === 'claude') {
+    if (fs.existsSync(destDir)) {
+      const existing = fs.readdirSync(destDir).filter(f => f.endsWith('.md') && !f.startsWith(STX_AGENT_PREFIX));
+      if (existing.length > 0) {
+        console.log(c.warn(`  ⚠ ${platformLabel(platform)}agents/: --link skipped (non-stx agents present); copying stx-*.md instead`));
+      } else {
+        try { fs.rmSync(destDir, { recursive: true, force: true }); } catch { /* ignore */ }
+        fs.mkdirSync(path.dirname(destDir), { recursive: true });
+        fs.symlinkSync(srcDir, destDir, 'dir');
+        return { count: personaFiles.length, action: 'linked' };
+      }
+    } else {
+      fs.mkdirSync(path.dirname(destDir), { recursive: true });
+      fs.symlinkSync(srcDir, destDir, 'dir');
+      return { count: personaFiles.length, action: 'linked' };
     }
-    fs.mkdirSync(path.dirname(destDir), { recursive: true });
-    fs.symlinkSync(srcDir, destDir, 'dir');
-    return { count: personaFiles.length, action: 'linked' };
   }
 
-  if (existed) {
-    try { fs.rmSync(destDir, { recursive: true, force: true }); } catch { /* ignore */ }
+  if (options.link && platform === 'cursor') {
+    console.log(c.warn(`  ⚠ .cursor/agents/: --link not supported (transform required); copying stx-*.md`));
   }
-  copyDirRecursive(srcDir, destDir);
-  return { count: personaFiles.length, action: existed ? 'updated' : 'added' };
+
+  fs.mkdirSync(destDir, { recursive: true });
+
+  let anyExisted = false;
+  for (const file of personaFiles) {
+    const destPath = path.join(destDir, file);
+    if (fs.existsSync(destPath)) anyExisted = true;
+    const raw = fs.readFileSync(path.join(srcDir, file), 'utf8');
+    const content = platform === 'cursor' ? transformForCursor(raw) : raw;
+    writeTextFile(destPath, content);
+  }
+
+  return { count: personaFiles.length, action: anyExisted ? 'updated' : 'added' };
 }
 
-function installSkill(name: string, target: string, options: Options): { action: 'added' | 'updated' | 'linked' | 'error' } {
+function installSkill(
+  name: string,
+  target: string,
+  options: Options,
+  platform: Platform,
+): { action: 'added' | 'updated' | 'linked' | 'error' } {
   const srcDir = path.join(PACKAGE_ROOT, '.claude', 'skills', name);
-  const destDir = path.join(target, '.claude', 'skills', name);
+  const destDir = path.join(skillsDest(target, platform), name);
 
   if (!fs.existsSync(srcDir)) {
     console.log(c.error(`  ✗ ${name}: source directory not found`));
@@ -200,29 +278,28 @@ function installSkill(name: string, target: string, options: Options): { action:
   }
 
   const existed = fs.existsSync(destDir);
+  const prefix = platform === 'cursor' ? '.cursor' : '.claude';
 
-  if (options.link) {
-    // Replace whatever is there with a symlink to the package's skill dir.
+  if (options.link && platform === 'claude') {
     if (existed) {
       try { fs.rmSync(destDir, { recursive: true, force: true }); } catch { /* ignore */ }
     }
     fs.mkdirSync(path.dirname(destDir), { recursive: true });
     fs.symlinkSync(srcDir, destDir, 'dir');
-    console.log(c.success(`  ✓ ${name}  ${c.dim('(symlinked)')}`));
+    console.log(c.success(`  ✓ ${prefix}/skills/${name}  ${c.dim('(symlinked)')}`));
     return { action: 'linked' };
   }
 
-  // Always refresh: remove the existing skill dir (if any) and copy fresh.
-  // This is a hard refresh — stx-skills is the source of truth for skill
-  // content, and re-running the installer is the way to pick up updates.
+  if (options.link && platform === 'cursor') {
+    console.log(c.warn(`  ⚠ .cursor/skills/${name}: --link not supported (transform required); copying`));
+  }
+
   if (existed) {
     try { fs.rmSync(destDir, { recursive: true, force: true }); } catch { /* ignore */ }
   }
 
-  // Copy SKILL.md / README.md / any other files
-  copyDirRecursive(srcDir, destDir);
+  copyDirRecursive(srcDir, destDir, platform, true);
 
-  // Copy compiled JS (+ source map if present) so the skill is self-contained
   const jsSrc = path.join(PACKAGE_ROOT, 'dist', 'skills', `${name}.js`);
   if (fs.existsSync(jsSrc)) {
     copyFileSyncSafe(jsSrc, path.join(destDir, `${name}.js`));
@@ -235,8 +312,39 @@ function installSkill(name: string, target: string, options: Options): { action:
 
   const action = existed ? 'updated' : 'added';
   const label = existed ? c.dim('(updated)') : c.dim('(new)');
-  console.log(c.success(`  ✓ ${name}  ${label}`));
+  console.log(c.success(`  ✓ ${prefix}/skills/${name}  ${label}`));
   return { action };
+}
+
+function runInstallPass(
+  options: Options,
+  platform: Platform,
+  toInstall: string[],
+): { added: number; updated: number; linked: number } {
+  console.log(c.bold(`\n  ── ${platform === 'claude' ? 'Claude Code' : 'Cursor IDE'} → ${platformLabel(platform)} ──\n`));
+
+  let added = 0;
+  let updated = 0;
+  let linked = 0;
+  for (const name of toInstall) {
+    const { action } = installSkill(name, options.target, options, platform);
+    if (action === 'added') added++;
+    else if (action === 'updated') updated++;
+    else if (action === 'linked') linked++;
+  }
+
+  if (options.skills.length === 0) {
+    const agentsResult = installAgents(options.target, options, platform);
+    if (agentsResult.count > 0) {
+      const prefix = platform === 'cursor' ? '.cursor' : '.claude';
+      const label = agentsResult.action === 'linked' ? '(symlinked)' :
+                    agentsResult.action === 'added' ? '(new)' : '(updated)';
+      console.log(c.success(`  ✓ ${prefix}/agents/ (${agentsResult.count} stx personas)  ${c.dim(label)}`));
+    }
+  }
+
+  console.log(c.dim(`\n  ${added} added · ${updated} updated${linked ? ` · ${linked} linked` : ''}`));
+  return { added, updated, linked };
 }
 
 function main(): void {
@@ -282,40 +390,27 @@ function main(): void {
 
   if (!options.link) ensureBuilt();
 
+  const platformDesc = options.platforms.map(p => platformLabel(p)).join(' + ');
   console.log(c.bold('\n═══════════════════════════════════════════════════════════════'));
   console.log(c.bold('  stx-skills installer'));
   console.log(c.bold('═══════════════════════════════════════════════════════════════'));
   console.log(`  Source : ${c.info(PACKAGE_ROOT)}`);
   console.log(`  Target : ${c.info(options.target)}`);
-  console.log(`  Mode   : ${c.info(options.link ? 'symlink (live updates)' : 'refresh (overwrite)')}\n`);
+  console.log(`  Dest   : ${c.info(platformDesc)}`);
+  console.log(`  Mode   : ${c.info(options.link ? 'symlink (Claude only) + copy (Cursor)' : 'refresh (overwrite stx-*)')}\n`);
 
-  let added = 0;
-  let updated = 0;
-  let linked = 0;
-  for (const name of toInstall) {
-    const { action } = installSkill(name, options.target, options);
-    if (action === 'added') added++;
-    else if (action === 'updated') updated++;
-    else if (action === 'linked') linked++;
+  for (const platform of options.platforms) {
+    runInstallPass(options, platform, toInstall);
   }
-
-  // Personas: copy the entire .claude/agents/ directory alongside the skills.
-  // Skipped when --skill flags select a subset (agents are shared infra, not skill-scoped).
-  if (options.skills.length === 0) {
-    const agentsResult = installAgents(options.target, options);
-    if (agentsResult.count > 0) {
-      const label = agentsResult.action === 'linked' ? '(symlinked)' :
-                    agentsResult.action === 'added' ? '(new)' : '(updated)';
-      console.log(c.success(`  ✓ .claude/agents/ (${agentsResult.count} personas)  ${c.dim(label)}`));
-    }
-  }
-
-  console.log(c.dim(`\n  ${added} added · ${updated} updated${linked ? ` · ${linked} linked` : ''}`));
 
   console.log(c.bold('\n═══════════════════════════════════════════════════════════════'));
   console.log(c.success('  ✅ Done. Available slash commands in the target project:'));
   console.log(c.bold('═══════════════════════════════════════════════════════════════\n'));
   for (const name of toInstall) console.log(`  /${name}`);
+  if (options.platforms.includes('cursor')) {
+    console.log(c.dim('\n  Cursor: invoke via / menu or @-mention the skill name.'));
+    console.log(c.dim('  Multi-agent waves use the Task tool with .cursor/agents/ personas.'));
+  }
   console.log('');
 }
 

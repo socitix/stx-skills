@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Install stx-skills to a target project.
-# Usage: ./install.sh /path/to/target/project
+# Usage: ./install.sh /path/to/target/project [--cursor|--both]
 #
 # Prefer `npx ../stx-skills` from the target project — this bash script
-# is the dependency-free fallback and mirrors what the npx installer does.
+# is the dependency-free fallback for Claude-only installs.
 
 set -e
 

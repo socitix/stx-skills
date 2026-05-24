@@ -45,7 +45,9 @@ This rule comes directly from the user's auto-memory `feedback_qa_fixer_workflow
 
 ## Worktree-first
 
-The user's global rule (`~/.claude/CLAUDE.md`) is "never implicitly work on `main`." Step 1 of the skill is a hard worktree check before any other question. If the user is on main, the skill stops and proposes a new worktree before asking anything else. This avoids a class of mistake where the interview happens, the user approves, and only then does the orchestrator realize it can't write tests on `main`.
+The user's global rule (`~/.claude/CLAUDE.md`) is "never implicitly work on `main`." Step 1 of the skill is a hard worktree check before any other question. If the user is on main, the skill stops and proposes a new worktree before asking anything else. **Step 1.5** (v1.1.1) then `cd`s into the worktree and verifies branch ≠ `main` before the interview or any file write — including in Cursor, where IDE workspace folder may still be main.
+
+See `docs/temp/REQ-worktree-enforcement-and-cursor-integration.md`.
 
 ## How this composes with other skills
 

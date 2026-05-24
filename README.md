@@ -1,6 +1,6 @@
 # stx-skills
 
-Organization-wide [Claude Code](https://docs.claude.com/en/docs/claude-code) skills collection — nine slash-commands and ten versioned agent personas that drive feature waves, bug fixes, commits, PR merges, documentation, and magazine-quality reports, all built around the worktree model. Install into any project without publishing to npm.
+Organization-wide [Claude Code](https://docs.claude.com/en/docs/claude-code) and [Cursor](https://cursor.com) skills collection — nine slash-commands and ten versioned agent personas that drive feature waves, bug fixes, commits, PR merges, documentation, and magazine-quality reports, all built around the worktree model. Install into any project without publishing to npm.
 
 📖 **[Open the walkthrough →](https://socitix.github.io/stx-skills/)** — full doc with diagrams, expandable skill catalog, settings reference.
 
@@ -9,6 +9,10 @@ Current release: **v1.9.0** · MIT licensed.
 ---
 
 ## Quick install
+
+**Source of truth:** everything lives under `stx-skills/.claude/skills/` and `.claude/agents/` (Claude-native markdown). The installer copies from there — Cursor installs apply transforms at copy time.
+
+### Claude Code (default)
 
 ```bash
 # From the GitHub repo — no clone needed
@@ -25,19 +29,68 @@ npx /Users/me/projects/stx-skills
 npx ../stx-skills ~/projects/my-app
 ```
 
+### Cursor IDE
+
+```bash
+cd ~/projects/my-app
+npx github:socitix/stx-skills --cursor
+# or from a sibling clone:
+npx ../stx-skills --cursor
+```
+
+Writes to `.cursor/skills/` and `.cursor/agents/` with install-time transforms:
+
+- `.claude/agents/` → `.cursor/agents/` in all paths
+- `Agent` tool → `Task` tool · `AskUserQuestion` → `AskQuestion`
+- Named persona spawns → `Task(subagent_type: "stx-analyst")` etc.
+- Slash-command skills get `disable-model-invocation: true` in frontmatter
+
+### Both IDEs
+
+```bash
+npx ../stx-skills --both
+```
+
+Installs Claude-native files to `.claude/` **and** Cursor-transformed files to `.cursor/` in one pass.
+
 > ⚠️ **Syntax note.** The package path goes right after `npx`. Do not prefix it with `install` — `npx install ../stx-skills` fails with `could not determine executable to run` because npx treats `install` as the package name. (`npm install` is different; that's the `npm` CLI.) The word `install` is accepted only *after* the package spec: `npx ../stx-skills install` works as a no-op verb.
 
-Re-running the installer **refreshes** — existing skill directories are wiped and replaced with the latest, so one command covers first install and updates.
+Re-running the installer **refreshes** — existing STX skill directories are wiped and replaced with the latest. Non-`stx-*` agent files in the target are preserved.
 
 ### Installer options
 
 ```bash
-npx ../stx-skills --link                    # symlink for live updates (dev mode)
+npx ../stx-skills --cursor                  # Cursor IDE only → .cursor/
+npx ../stx-skills --both                    # Claude + Cursor in one command
+npx ../stx-skills --link                    # symlink Claude skills (dev mode)
 npx ../stx-skills --skill stx-feature       # install only one skill
 npx ../stx-skills --list                    # show what's available
-npx ../stx-skills --force                   # overwrite existing installs
 npx ../stx-skills --help
 ```
+
+### Running multi-agent waves in Cursor
+
+The `/stx-feature` and `/stx-fix` skills are **orchestrator instructions** — the main Cursor agent reads the skill and spawns subagents via the **Task** tool:
+
+| Phase | Parallel? | How |
+|---|---|---|
+| Analyst → Architect → QA | Sequential (3 user gates) | One Task per phase |
+| Dev wave | Up to 3 parallel | Multiple Task calls in one turn when `scope_paths` don't overlap |
+| Dev ↔ Reviewer ↔ QA loop | Sequential per task | Task chain per task |
+
+Persona contracts live in `.cursor/agents/stx-*.md`. The orchestrator does not embed them inline — it delegates to named subagent types.
+
+### Skill-driven worktree model (not IDE-folder-driven)
+
+STX enforces worktrees in the **skill protocol**, not by which folder you opened in the IDE:
+
+1. `/stx-feature` and `/stx-fix` run on **main**, create `.claude/worktrees/<name>/`, then **Step 0.5 / 1.5** `cd` into it and verify branch ≠ `main`.
+2. All wave artifacts and code edits happen from that worktree cwd (or absolute paths under it).
+3. Every spawned subagent gets a **Worktree** preamble with the absolute path.
+
+**Cursor caveat:** Step 0.5 changes the agent's shell cwd but does **not** switch the Cursor workspace folder. Cursor's native `/worktree` command and `.cursor/worktrees.json` are a **separate** system — STX does not invoke them. For long UI sessions you may still open the worktree folder manually; for waves, trust Step 0.5 + absolute paths.
+
+Optional hard gate for consuming repos: `.cursor/hooks.json` denying Write on `main` (see `docs/temp/REQ-worktree-enforcement-and-cursor-integration.md`).
 
 ---
 
@@ -253,7 +306,8 @@ stx-skills/
 ├── tsconfig.json
 ├── src/
 │   ├── cli/
-│   │   └── install.ts                        # npx stx-skills entry point
+│   │   ├── install.ts                        # npx stx-skills entry point
+│   │   └── cursor-transform.ts               # --cursor install-time transforms
 │   └── skills/
 │       ├── stx-checkin.ts
 │       ├── stx-pr-merge.ts

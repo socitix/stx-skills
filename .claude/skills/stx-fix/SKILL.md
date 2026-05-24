@@ -1,7 +1,7 @@
 ---
 name: stx-fix
 description: Drives a two-agent QA → Coder loop against a known bug (or small cluster of related bugs). Interviews the user to fill the prompt template, confirms the worktree state, presents the rendered prompt for explicit user acceptance, then kicks off the loop. Use when the user has a reproducible bug and wants a failing test written first, then the smallest code change that makes it pass.
-version: 1.1.0
+version: 1.1.1
 author: STX
 ---
 
@@ -63,6 +63,27 @@ The worktree command pattern:
 git worktree add .claude/worktrees/<name> -b bugfix/<name>
 ln -sf <main-repo>/.env.local .claude/worktrees/<name>/.env.local  # if applicable
 ```
+
+### Step 1.5 — Switch session into the worktree (mandatory)
+
+After creating or confirming a worktree, **before Step 2 (interview) or any file write**:
+
+```bash
+MAIN="$(git rev-parse --show-toplevel)"
+WT=".claude/worktrees/<name>"
+cd "$WT"
+git rev-parse --abbrev-ref HEAD       # must NOT be main or master
+git rev-parse --show-toplevel         # must equal $(pwd)
+```
+
+- If branch is `main` / `master` → **halt**. Do not proceed.
+- Print: `Working in <branch> at <abs-path>`.
+- All shell commands for the rest of this fix run from `$WT`.
+- **Cursor note:** shell `cd` does not change the IDE workspace folder. Still required — do not write tests or code from the main checkout.
+
+When spawning QA or Coder subagents, **prepend**:
+
+> **Worktree:** `<abs-path-to-WT>`. All reads, writes, and shell commands MUST run from this directory. Do not edit files in the main checkout at `<MAIN>`.
 
 ### Step 2 — Interview the user (fill the form)
 

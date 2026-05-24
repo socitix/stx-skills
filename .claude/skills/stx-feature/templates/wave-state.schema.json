@@ -18,6 +18,18 @@
       "enum": ["planning", "gate-1", "gate-2", "gate-3", "dev-wave", "done", "halted-at-cap", "blocked"]
     },
     "initial_request": { "type": "string" },
+    "worktree_path": {
+      "type": "string",
+      "description": "Absolute path to the feature worktree. Set at Step 0.5 before any artifact write."
+    },
+    "branch": {
+      "type": "string",
+      "description": "Feature branch name (e.g. feat/wave-<slug>). Set at Step 0.5."
+    },
+    "main_worktree_path": {
+      "type": "string",
+      "description": "Absolute path to the main repo checkout. Set at Step 0.5."
+    },
     "config": {
       "type": "object",
       "required": ["soft_cap", "hard_cap", "suspicious_ceiling", "max_parallel_devs", "continue_past_dry_run", "vitest_install_allowed", "use_browser_mcp", "commit_policy"],

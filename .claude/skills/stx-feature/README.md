@@ -100,9 +100,15 @@ Code style is subjective. If QA can reject a green-test Dev iteration because "t
 - It does **not** auto-publish or auto-merge. PR creation and merge are separate user-approved steps via `/stx-checkin` and `/stx-pr-merge`.
 - It does **not** maintain history across waves. Each wave is independent. A second wave for related work starts from scratch (intentional — old artifacts going stale is worse than re-decomposing).
 
+## Worktree session switch (v1.2.1)
+
+Step 0 creates the worktree; **Step 0.5** `cd`s into it and verifies branch ≠ `main` before any artifact or agent runs. `wave-state.json` records `worktree_path`, `branch`, and `main_worktree_path`. Every spawned agent gets a **Worktree** preamble so edits land on the feature branch even when the operator's IDE is still opened on main (especially Cursor).
+
+See `docs/temp/REQ-worktree-enforcement-and-cursor-integration.md` for the full rationale and Cursor integration notes.
+
 ## Future work
 
 - A CLI binary (`stx-feature`) that pre-validates the form (worktree exists, test runners installed, etc.) before the assistant takes over.
-- A `--resume <wave-id>` mode that reads `wave-state.json` from a halted wave and picks up where it left off.
+- A `--resume <wave-id>` mode that reads `wave-state.json`, runs Step 0.5 against `worktree_path`, and picks up from saved status.
 - A `--linear-issue <id>` mode that creates/updates a Linear issue per wave (currently out of scope per user direction).
 - A wave-level diff visualizer in `result.html` that shows scope-path coverage vs actual file changes.

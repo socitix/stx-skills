@@ -423,6 +423,7 @@
   }
   .pending .row .pill.planned  { background: #e2eaf3; color: var(--accent); }
   .pending .row .pill.research { background: #fcf2dc; color: var(--gold); }
+  .pending .row .pill.shipped   { background: #dfeee4; color: #2f6a45; }
 
   footer.colophon {
     border-top: 1px solid var(--rule);
@@ -743,6 +744,7 @@
       <h4>Contents</h4>
       <ol>
         <li><a href="#walkthrough">Walkthrough</a></li>
+        <li><a href="#cursor">Cursor IDE</a></li>
         <li><a href="#types">Three types of commands</a></li>
         <li><a href="#flows">Features vs bug fixes</a></li>
         <li><a href="#worktree">Worktree lifecycle</a></li>
@@ -835,9 +837,13 @@
           <div data-step="1" class="step-detail active">
             <span class="step-pill">Step 1 · Install</span>
             <h4>You're on main and the skills aren't here yet</h4>
-            <p>A big change is inbound. If this harmless skill set isn't installed in your project, run one line. The installer only writes to <code>.claude/skills/</code> — nothing else in your project moves.</p>
-            <pre><span class="o">npx</span> github:socitix/stx-skills</pre>
-            <p class="step-note">Re-running is the supported way to pick up updates. Your settings file (<code>.claude/stx-skill-settings.json</code>) is left alone on re-install.</p>
+            <p>A big change is inbound. If this harmless skill set isn't installed in your project, run one line. The installer writes to <code>.claude/skills/</code> (Claude Code) — or pass <code>--cursor</code> / <code>--both</code> for Cursor. Nothing else in your project moves.</p>
+            <pre><span class="o">npx</span> github:socitix/stx-skills
+<span class="c"># Cursor IDE:</span>
+<span class="o">npx</span> github:socitix/stx-skills <span class="o">--cursor</span>
+<span class="c"># Both IDEs:</span>
+<span class="o">npx</span> github:socitix/stx-skills <span class="o">--both</span></pre>
+            <p class="step-note">Re-running is the supported way to pick up updates. Your settings file (<code>.claude/stx-skill-settings.json</code>) is left alone on re-install. See <a href="#cursor">§2 Cursor IDE</a> for transforms and multi-agent behavior.</p>
           </div>
 
           <div data-step="2" class="step-detail">
@@ -861,7 +867,7 @@
             <h4>Three cheap moments to redirect</h4>
             <p>Analyst writes <code>requirement-verse.html</code>, you approve. Architect writes <code>architecture-verse.html</code>, you approve — <strong>scope freezes</strong>. QA writes failing tests in <code>qa-verse.html</code>, you approve — <strong>dry-run boundary</strong> reached.</p>
             <p>Each gate is your chance to redirect before the expensive Dev wave starts. Catching a misread requirement at Gate 1 costs minutes; catching it after the Dev wave costs hours.</p>
-            <p class="step-link">Compare with the bug-fix flow → <a href="#flows">§3 Features vs bug fixes</a>.</p>
+            <p class="step-link">Compare with the bug-fix flow → <a href="#flows">§4 Features vs bug fixes</a>.</p>
           </div>
 
           <div data-step="5" class="step-detail">
@@ -885,10 +891,10 @@
             <p>The same skill removes the worktree, deletes the local branch, leaves main rebuilt and clean. The wave artifacts (requirement-verse, architecture-verse, qa-verse, result.html) ride along in the squash commit — so they're preserved in main's history.</p>
             <p class="step-note setting">
               <svg class="gear-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              Change by running <code>/stx-settings</code>. See <a href="#settings">§6 Settings</a>.
+              Change by running <code>/stx-settings</code>. See <a href="#settings">§7 Settings</a>.
             </p>
             <p class="step-note">If a wave <em>halted</em> instead of finishing, run <code>/stx-report</code> first to write a single HTML report into main's <code>docs/</code> — that survives worktree removal.</p>
-            <p class="step-link">More → <a href="#worktree">§4 Worktree lifecycle</a>.</p>
+            <p class="step-link">More → <a href="#worktree">§5 Worktree lifecycle</a>.</p>
           </div>
         </div>
 
@@ -1012,9 +1018,13 @@
           <div data-step="1" class="step-detail active">
             <span class="step-pill">Step 1 · Install</span>
             <h4>You're on main and the skills aren't here yet</h4>
-            <p>A bug is open. If this harmless skill set isn't installed in your project, run one line. The installer only writes to <code>.claude/skills/</code> — nothing else in your project moves.</p>
-            <pre><span class="o">npx</span> github:socitix/stx-skills</pre>
-            <p class="step-note">Re-running is the supported way to pick up updates. Your settings file (<code>.claude/stx-skill-settings.json</code>) is left alone on re-install.</p>
+            <p>A bug is open. If this harmless skill set isn't installed in your project, run one line. The installer writes to <code>.claude/skills/</code> (Claude Code) — or pass <code>--cursor</code> / <code>--both</code> for Cursor. Nothing else in your project moves.</p>
+            <pre><span class="o">npx</span> github:socitix/stx-skills
+<span class="c"># Cursor IDE:</span>
+<span class="o">npx</span> github:socitix/stx-skills <span class="o">--cursor</span>
+<span class="c"># Both IDEs:</span>
+<span class="o">npx</span> github:socitix/stx-skills <span class="o">--both</span></pre>
+            <p class="step-note">Re-running is the supported way to pick up updates. Your settings file (<code>.claude/stx-skill-settings.json</code>) is left alone on re-install. See <a href="#cursor">§2 Cursor IDE</a> for transforms and multi-agent behavior.</p>
           </div>
 
           <div data-step="2" class="step-detail">
@@ -1061,9 +1071,9 @@
             <p>The same skill removes the worktree, deletes the local branch, leaves main rebuilt and clean. The fix test rides along in the squash commit — so the bug stays caught if it ever returns.</p>
             <p class="step-note setting">
               <svg class="gear-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              Change by running <code>/stx-settings</code>. See <a href="#settings">§6 Settings</a>.
+              Change by running <code>/stx-settings</code>. See <a href="#settings">§7 Settings</a>.
             </p>
-            <p class="step-link">More → <a href="#worktree">§4 Worktree lifecycle</a>.</p>
+            <p class="step-link">More → <a href="#worktree">§5 Worktree lifecycle</a>.</p>
           </div>
         </div>
 
@@ -1129,10 +1139,101 @@
       </div>
     </section>
 
-    <!-- ════════════════ §2 — TYPES ════════════════ -->
-    <section id="types">
+    <!-- ════════════════ §2 — CURSOR IDE ════════════════ -->
+    <section id="cursor">
       <div class="sect-head">
         <span class="sect-n">02</span>
+        <span class="sect-name">Cursor IDE</span>
+      </div>
+      <div class="sect-tag"><strong>Same skills, two install targets.</strong> Source of truth stays Claude-native under the package's <code>.claude/</code> tree — Cursor installs apply transforms at copy time.</div>
+
+      <div class="legend">
+        <div class="row">
+          <div class="badge"><span class="type type-main">default</span></div>
+          <div class="txt"><code>npx stx-skills</code> → <code>.claude/skills/</code> + <code>.claude/agents/</code> (Claude Code, unchanged)</div>
+        </div>
+        <div class="row">
+          <div class="badge"><span class="type type-wt">--cursor</span></div>
+          <div class="txt"><code>npx stx-skills --cursor</code> → <code>.cursor/skills/</code> + <code>.cursor/agents/</code> (transformed for Cursor)</div>
+        </div>
+        <div class="row">
+          <div class="badge"><span class="type type-any">--both</span></div>
+          <div class="txt"><code>npx stx-skills --both</code> → both trees in one pass (teams using Claude Code and Cursor on the same repo)</div>
+        </div>
+      </div>
+
+      <h4>Install examples</h4>
+      <pre><span class="c"># From GitHub — Cursor only</span>
+<span class="o">cd</span> ~/projects/my-app
+<span class="o">npx</span> github:socitix/stx-skills <span class="o">--cursor</span>
+
+<span class="c"># Sibling clone — both IDEs</span>
+<span class="o">npx</span> ../stx-skills <span class="o">--both</span>
+
+<span class="c"># Explicit target + one skill</span>
+<span class="o">npx</span> ../stx-skills <span class="o">--cursor --skill</span> stx-feature ~/projects/my-app
+
+<span class="c"># Refresh after pulling stx-skills updates</span>
+<span class="o">npx</span> ../stx-skills <span class="o">--both</span></pre>
+
+      <h4>What the installer transforms (--cursor)</h4>
+      <table class="deftbl">
+        <thead><tr><th>Claude source</th><th>Cursor installed</th></tr></thead>
+        <tbody>
+          <tr><td class="k">.claude/skills/</td><td>.cursor/skills/ (+ <code>disable-model-invocation: true</code> on slash skills)</td></tr>
+          <tr><td class="k">.claude/agents/stx-*.md</td><td>.cursor/agents/stx-*.md (only <code>stx-*</code> personas managed; other agents preserved)</td></tr>
+          <tr><td class="k">Agent tool</td><td>Task tool</td></tr>
+          <tr><td class="k">AskUserQuestion</td><td>AskQuestion</td></tr>
+          <tr><td class="k">subagent_type: general-purpose + paste persona</td><td>Task with named <code>subagent_type: "stx-analyst"</code> etc.</td></tr>
+          <tr><td class="k">dist/skills/*.js CLI binaries</td><td>Copied unchanged into skill dirs</td></tr>
+        </tbody>
+      </table>
+
+      <h4>Running multi-agent waves in Cursor</h4>
+      <p><code>/stx-feature</code> and <code>/stx-fix</code> are orchestrator skills — the main Cursor agent reads them and delegates via the <strong>Task</strong> tool. There is no separate runtime; continuity lives in <code>wave-state.json</code> on disk.</p>
+
+      <div class="callout">
+        <strong>Worktrees: STX vs Cursor native.</strong> STX skills create <code>.claude/worktrees/&lt;name&gt;/</code> and mandate <strong>Step 0.5</strong> (<code>cd</code> + branch verify) before any edit — the skill drives behavior, not which IDE folder is open. Cursor's separate <code>/worktree</code> command and Agents Window worktree toggle use Cursor's own checkout manager and <code>.cursor/worktrees.json</code>; they do <em>not</em> integrate with STX today. Do not assume invoking <code>/stx-feature</code> switches the Cursor workspace — the orchestrator must <code>cd</code> and pass absolute paths to subagents.
+      </div>
+
+      <div class="blocks">
+        <div class="block use"><div class="lbl">Sequential (by design)</div><ul>
+          <li>Analyst → Gate → Architect → Gate → QA → Gate</li>
+          <li>Per task: Dev → Reviewer → QA loop</li>
+        </ul></div>
+        <div class="block dontuse"><div class="lbl">Parallel (when eligible)</div><ul>
+          <li>Up to 3 Dev Tasks in one turn when <code>scope_paths</code> don't overlap</li>
+          <li>Orchestrator must launch multiple Task calls in the same message</li>
+        </ul></div>
+      </div>
+
+      <div class="callout callout-teal">
+        <strong>Invoke skills in Cursor.</strong> Use the <code>/</code> menu or @-mention the skill name (e.g. <code>/stx-feature</code>). Persona contracts live in <code>.cursor/agents/</code> — the orchestrator spawns them by name, not by pasting inline prompts.
+      </div>
+
+      <h4>Directory shape (Cursor)</h4>
+      <pre>&lt;project&gt;/
+├── .cursor/
+│   ├── skills/
+│   │   ├── stx-feature/
+│   │   ├── stx-fix/
+│   │   └── ...
+│   └── agents/
+│       ├── stx-analyst.md
+│       ├── stx-architect.md
+│       └── ... (10 stx personas)
+├── .claude/          <span class="c">← still used for worktrees + settings</span>
+│   ├── worktrees/
+│   └── stx-skill-settings.json
+└── ...</pre>
+
+      <p class="step-note"><code>--link</code> (dev symlink mode) applies to Claude skills only. Cursor installs always copy + transform because paths and APIs differ.</p>
+    </section>
+
+    <!-- ════════════════ §3 — TYPES ════════════════ -->
+    <section id="types">
+      <div class="sect-head">
+        <span class="sect-n">03</span>
         <span class="sect-name">Three types of commands</span>
       </div>
       <div class="sect-tag">Where you run a skill tells you what it does.</div>
@@ -1161,7 +1262,9 @@
           <ul>
             <li>/stx-feature<span class="when">initiate a multi-task wave for big features</span></li>
             <li>/stx-fix<span class="when">single-bug QA→Coder loop</span></li>
-            <li>npx stx-skills<span class="when">install / refresh skills</span></li>
+            <li>npx stx-skills<span class="when">install / refresh → .claude/</span></li>
+            <li>npx stx-skills --cursor<span class="when">install / refresh → .cursor/</span></li>
+            <li>npx stx-skills --both<span class="when">install both IDE trees</span></li>
             <li>/stx-skill-settings<span class="when">view/edit settings (planned)</span></li>
           </ul>
         </div>
@@ -1196,10 +1299,10 @@
       </div>
     </section>
 
-    <!-- ════════════════ §3 — FEATURES vs BUG FIXES ════════════════ -->
+    <!-- ════════════════ §4 — FEATURES vs BUG FIXES ════════════════ -->
     <section id="flows">
       <div class="sect-head">
-        <span class="sect-n">03</span>
+        <span class="sect-n">04</span>
         <span class="sect-name">Features vs bug fixes</span>
       </div>
       <div class="sect-tag">Two flows, two skills. Pick the one that matches the work.</div>
@@ -1314,10 +1417,10 @@
       </table>
     </section>
 
-    <!-- ════════════════ §4 — WORKTREE ════════════════ -->
+    <!-- ════════════════ §5 — WORKTREE ════════════════ -->
     <section id="worktree">
       <div class="sect-head">
-        <span class="sect-n">04</span>
+        <span class="sect-n">05</span>
         <span class="sect-name">Worktree lifecycle</span>
       </div>
       <div class="sect-tag">Create · work · report · discard.</div>
@@ -1350,10 +1453,10 @@
           <text x="775" y="110" font-family="Inter, sans-serif" font-size="11" fill="#1d6b76">squash-merge · refresh</text>
 
           <g>
-            <a href="#flows"><title>Wave work — see §3 for the agent flow</title>
+            <a href="#flows"><title>Wave work — see §4 for the agent flow</title>
               <rect x="190" y="188" width="640" height="48" rx="4" fill="#fff" stroke="#1d6b76" stroke-width="1.5" />
               <text x="510" y="210" text-anchor="middle" font-family="Fraunces, serif" font-size="15" font-weight="600" fill="#0d1421">Wave work</text>
-              <text x="510" y="226" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#6f7686">Analyst → Architect → QA → Dev → Report · 3 user gates inside · <tspan fill="#1f4e79" text-decoration="underline">see §3 for detail</tspan></text>
+              <text x="510" y="226" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#6f7686">Analyst → Architect → QA → Dev → Report · 3 user gates inside · <tspan fill="#1f4e79" text-decoration="underline">see §4 for detail</tspan></text>
             </a>
           </g>
 
@@ -1372,7 +1475,9 @@
       <table class="deftbl">
         <thead><tr><th>Location</th><th>Contents</th><th>Survives reinstall?</th></tr></thead>
         <tbody>
-          <tr><td class="k">.claude/skills/&lt;name&gt;/</td><td>Skill source + CLI binary</td><td>No — installer wipes &amp; replaces</td></tr>
+          <tr><td class="k">.claude/skills/&lt;name&gt;/</td><td>Skill source + CLI binary (Claude Code)</td><td>No — installer wipes &amp; replaces stx-*</td></tr>
+          <tr><td class="k">.cursor/skills/&lt;name&gt;/</td><td>Skill source + CLI binary (Cursor, transformed)</td><td>No — installer wipes &amp; replaces stx-*</td></tr>
+          <tr><td class="k">.cursor/agents/stx-*.md</td><td>Persona contracts for Task tool</td><td>No — installer refreshes stx-* only</td></tr>
           <tr><td class="k">.claude/stx-skill-settings.json</td><td>Project-wide settings</td><td>Yes — outside installer sweep</td></tr>
           <tr><td class="k">.claude/worktrees/&lt;name&gt;/</td><td>The feature worktree itself</td><td>Yes — outside installer sweep</td></tr>
           <tr><td class="k">&lt;worktree&gt;/docs/waves/&lt;id&gt;/</td><td>wave-state.json + 4 HTML artifacts</td><td>Committed to feature branch</td></tr>
@@ -1383,14 +1488,14 @@
       <pre><span class="c"># After a couple of waves:</span>
 &lt;project&gt;/
 ├── .claude/
-│   ├── skills/
-│   │   ├── stx-feature/
-│   │   ├── stx-fix/
-│   │   └── ...
+│   ├── skills/                   <span class="c">← Claude Code (default install)</span>
 │   ├── stx-skill-settings.json   <span class="c">← persistent, checked in</span>
 │   └── worktrees/
 │       ├── wave-admin-multi-delete/
 │       └── bugfix-timer-offset/
+├── .cursor/                      <span class="c">← Cursor (--cursor / --both)</span>
+│   ├── skills/
+│   └── agents/
 └── ...</pre>
 
       <div class="callout callout-teal">
@@ -1398,10 +1503,10 @@
       </div>
     </section>
 
-    <!-- ════════════════ §5 — CATALOG ════════════════ -->
+    <!-- ════════════════ §6 — CATALOG ════════════════ -->
     <section id="catalog">
       <div class="sect-head">
-        <span class="sect-n">05</span>
+        <span class="sect-n">06</span>
         <span class="sect-name">Skill catalog</span>
       </div>
       <div class="sect-tag">Click any row to expand.</div>
@@ -1790,13 +1895,13 @@
           <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
         </summary>
         <div class="body">
-          <p>Thin shell-out. Runs <code>open .claude/skills/stx-help-html/help.html</code>. The HTML you're reading right now is that file — shipped with the skill, refreshed on every installer run.</p>
+          <p>Thin shell-out. Runs <code>open .claude/skills/stx-help-html/help.html</code> (or the Cursor copy at <code>.cursor/skills/stx-help-html/help.html</code> when installed with <code>--cursor</code>). The HTML you're reading right now is that file — shipped with the skill, refreshed on every installer run.</p>
 
           <h4>Invocation</h4>
           <pre>/stx-help-html</pre>
 
           <h4>Location</h4>
-          <p><code>&lt;project&gt;/.claude/skills/stx-help-html/help.html</code></p>
+          <p><code>&lt;project&gt;/.claude/skills/stx-help-html/help.html</code> · Cursor: <code>.cursor/skills/stx-help-html/help.html</code></p>
         </div>
       </details>
 
@@ -1826,10 +1931,10 @@
       </details>
     </section>
 
-    <!-- ════════════════ §6 — SETTINGS ════════════════ -->
+    <!-- ════════════════ §7 — SETTINGS ════════════════ -->
     <section id="settings">
       <div class="sect-head">
-        <span class="sect-n">06</span>
+        <span class="sect-n">07</span>
         <span class="sect-name">Settings</span>
       </div>
       <div class="sect-tag">One file, checked in by default.</div>
@@ -1879,10 +1984,10 @@
       <p>The settings file is <strong>copied</strong> into the worktree at creation (not symlinked). Edits to main's file don't propagate to a worktree already in flight — intentional, the wave runs with the settings it was started with.</p>
     </section>
 
-    <!-- ════════════════ §7 — PENDING ════════════════ -->
+    <!-- ════════════════ §8 — PENDING ════════════════ -->
     <section id="pending">
       <div class="sect-head">
-        <span class="sect-n">07</span>
+        <span class="sect-n">08</span>
         <span class="sect-name">Pending features</span>
       </div>
       <div class="sect-tag">Designed during scenario walkthroughs, not yet shipped.</div>
@@ -1958,6 +2063,15 @@
             <p>Real CLI that bypasses the LLM. View / edit / set / reset against the project settings file. Header reminder that settings are checked in.</p>
           </div>
           <div><span class="pill planned">planned</span></div>
+        </div>
+
+        <div class="row">
+          <div class="num">9</div>
+          <div class="body">
+            <h4>Worktree session switch (Step 0.5)</h4>
+            <p>Shipped in v1.2.1 (<code>/stx-feature</code>) and v1.1.1 (<code>/stx-fix</code>): mandatory <code>cd</code> into <code>.claude/worktrees/&lt;name&gt;</code> after create, branch verify, <code>worktree_path</code> in <code>wave-state.json</code>, Worktree preamble on every subagent. See <code>docs/temp/REQ-worktree-enforcement-and-cursor-integration.md</code>.</p>
+          </div>
+          <div><span class="pill planned">shipped</span></div>
         </div>
       </div>
     </section>
