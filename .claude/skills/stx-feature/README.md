@@ -75,6 +75,18 @@ HTML is great for humans, bad for orchestrators. If the wave halts mid-loop and 
 
 HTML is regenerated from JSON after each state change. It's a view, not a model.
 
+## Why wave-wiki.html is a rebuilt index, not a fourth source of truth
+
+`wave-wiki.html` (at `docs/waves/wave-wiki.html`, one level above the per-wave dirs) is the one cross-wave artifact. It exists so a human can see *all* waves at a glance — name, status, when, what, and a link in — without opening each directory.
+
+The model→view discipline that governs per-wave HTML governs the wiki too, just one level up:
+
+- The per-wave `wave-state.json` files remain the only source of truth. The wiki holds **no** state of its own.
+- It is **rebuilt from scratch** at every `result.html` write (Step 8/§9) by scanning `docs/waves/*/wave-state.json` — never appended to in place. That makes it idempotent: a `--resume`, a re-run, or a wave directory added/removed by hand all self-heal on the next render. An append-only wiki would drift the moment reality diverged from it.
+- It lists **every** wave with a status badge, not just `done` ones, so it doubles as a live dashboard of in-flight and halted waves.
+
+This does not violate "waves are independent" (see the "does NOT do" section): the wiki only ever *reads* across waves to present them. No wave consumes the wiki — or another wave's state — as input.
+
 ## Why iteration caps reconcile differently than /stx-fix
 
 `/stx-fix`'s caps are soft 3 / hard 5 *per bug*. `/stx-feature`'s caps are soft 3 / hard 5 *per task*. A wave with 8 tasks can spend 40 iterations total without violating either cap — and that's correct behavior, because each task is its own little loop.
@@ -98,7 +110,7 @@ Code style is subjective. If QA can reject a green-test Dev iteration because "t
 - It does **not** loop on the user's behalf when iteration caps trip. It halts and writes `handoff.md`. A human decides what changes (test, scope, architecture) before any retry.
 - It does **not** auto-commit. Even with `commit-after-green`, the skill asks before running `git commit`.
 - It does **not** auto-publish or auto-merge. PR creation and merge are separate user-approved steps via `/stx-checkin` and `/stx-pr-merge`.
-- It does **not** maintain history across waves. Each wave is independent. A second wave for related work starts from scratch (intentional — old artifacts going stale is worse than re-decomposing).
+- It does **not** couple waves. Each wave is independent: a second wave for related work starts from scratch and never reads another wave's artifacts as input (intentional — old artifacts going stale is worse than re-decomposing). The cross-wave `wave-wiki.html` is the one exception, and only in the read-only direction — it is a *derived index* of the independent waves, never a shared input that one wave reuses from another.
 
 ## Worktree session switch (v1.2.1)
 
