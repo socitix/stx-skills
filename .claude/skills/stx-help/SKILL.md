@@ -35,7 +35,7 @@ When this skill fires, print exactly this block (no extra commentary
 before or after):
 
 ```
-STX Skills · v1.9.0
+STX Skills · v1.10.0
 
 MAIN-BOUND       run on main, before any worktree exists
   /stx-feature        Multi-agent wave (Analyst → Architect → QA → Dev ↔ Reviewer)

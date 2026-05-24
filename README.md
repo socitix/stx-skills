@@ -4,7 +4,7 @@ Organization-wide [Claude Code](https://docs.claude.com/en/docs/claude-code) and
 
 📖 **[Open the walkthrough →](https://socitix.github.io/stx-skills/)** — full doc with diagrams, expandable skill catalog, settings reference.
 
-Current release: **v1.9.0** · MIT licensed.
+Current release: **v1.10.0** · MIT licensed.
 
 ---
 
@@ -129,7 +129,7 @@ Every skill is one of three types based on where you run it:
 
 ### `/stx-feature` — multi-agent feature wave  *(main-bound)*
 
-Interview → Analyst → Architect → QA → tier-specialized Dev agents. Three approval gates, suspicious-change tracking, iteration caps. Produces `requirement-verse.html`, `architecture-verse.html`, `qa-verse.html`, `result.html` under `docs/waves/<wave-id>/`.
+Interview → Analyst → Architect → QA → tier-specialized Dev agents. Three approval gates, suspicious-change tracking, iteration caps. Produces `requirement-verse.html`, `architecture-verse.html`, `qa-verse.html`, `result.html` under `docs/waves/<wave-id>/`, plus a cross-wave `docs/waves/wave-wiki.html` index rebuilt at the end of every wave.
 
 ```bash
 /stx-feature                                              # Fully interactive

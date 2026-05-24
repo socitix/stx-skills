@@ -151,16 +151,18 @@ All work below happens **inside that worktree**.
 All artifacts for this wave live in:
 
 ```
-docs/waves/wave-{{wave_slug}}-<4-char-random>/
-├── wave-state.json          # canonical state — features, tasks, suspicious[], escalations[]
-├── requirement-verse.html   # written by Analyst (Agent 1) at Gate 1
-├── architecture-verse.html  # written by Architect (Agent 2) at Gate 2
-├── qa-verse.html            # written by QA (Agent 3) at Gate 3
-├── result.html              # written by orchestrator at end of wave
-└── handoff.md               # written only if the wave halts at a cap
+docs/waves/
+├── wave-wiki.html           # cross-wave index — rebuilt at end of EVERY wave (Step 9)
+└── wave-{{wave_slug}}-<4-char-random>/
+    ├── wave-state.json          # canonical state — features, tasks, suspicious[], escalations[]
+    ├── requirement-verse.html   # written by Analyst (Agent 1) at Gate 1
+    ├── architecture-verse.html  # written by Architect (Agent 2) at Gate 2
+    ├── qa-verse.html            # written by QA (Agent 3) at Gate 3
+    ├── result.html              # written by orchestrator at end of wave
+    └── handoff.md               # written only if the wave halts at a cap
 ```
 
-Generate the 4-char-random suffix once at wave start. Persist it in `wave-state.json.wave_id`.
+Generate the 4-char-random suffix once at wave start. Persist it in `wave-state.json.wave_id`. `wave-wiki.html` is the only artifact shared across waves; it is regenerated from every `wave-state.json` and never hand-edited.
 
 ## 4. Agent roles
 
@@ -331,6 +333,14 @@ Render `result.html` from the bundled template. It must include:
 - Files touched (deduplicated list with byte deltas if cheap to compute)
 - Agents spawned (count, types) and approximate run time
 - Next-action recommendation
+
+Then **rebuild `docs/waves/wave-wiki.html`** from the bundled template (`templates/wave-wiki.html`). This is a full regenerate, not an append:
+
+- Scan **every** `docs/waves/*/wave-state.json`, not just this wave's.
+- One row per wave: `wave_slug`, `wave_id`, `status`, `started_at`, `finished_at` (or `—`), `initial_request` trimmed to ~140 chars, and features done / total.
+- Link each row to `./<wave_id>/result.html` if that file exists, else `./<wave_id>/`.
+- Sort by `started_at` descending and render **all** waves regardless of status (the wiki doubles as a live dashboard).
+- Overwrite the file every time so it always matches the wave directories on disk.
 
 {{#if commit_policy == "no-commit"}}
 **Commit policy: no-commit.** Leave the wave's changes uncommitted. The orchestrator's final user-facing message summarizes what changed and waits for the user's commit instruction.

@@ -1,7 +1,7 @@
 ---
 name: stx-feature
-description: Drives a multi-agent feature implementation wave. Interviews the user, runs Analyst → Architect → QA in sequence (each behind a gate), then schedules tier-specialized Dev agents under a Reviewer + QA control loop. Produces requirement-verse.html, architecture-verse.html, qa-verse.html, and result.html artifacts in docs/waves/. Use when a new feature (multi-task, possibly multi-tier) needs to be implemented, not a single bug fix.
-version: 1.2.1
+description: Drives a multi-agent feature implementation wave. Interviews the user, runs Analyst → Architect → QA in sequence (each behind a gate), then schedules tier-specialized Dev agents under a Reviewer + QA control loop. Produces requirement-verse.html, architecture-verse.html, qa-verse.html, and result.html artifacts in docs/waves/, plus a cross-wave wave-wiki.html index. Use when a new feature (multi-task, possibly multi-tier) needs to be implemented, not a single bug fix.
+version: 1.3.0
 author: STX
 ---
 
@@ -59,18 +59,19 @@ This skill operates under the user's CRITICAL governance rules from `~/.claude/C
 
 ## Artifacts (written into the consuming project)
 
-Everything lives under `docs/waves/wave-{slug}-{xxx}/` in the consuming repo:
+Per-wave artifacts live under `docs/waves/wave-{slug}-{xxx}/`; one cross-wave index lives at `docs/waves/wave-wiki.html`:
 
-| File | Owner | Purpose |
-|---|---|---|
-| `wave-state.json` | Skill orchestrator | Source of truth: features, tasks, statuses, iteration counters, `suspicious[]`, `escalations[]`, `persona_versions` |
-| `requirement-verse.html` | Analyst | Rendered Features list with acceptance criteria |
-| `architecture-verse.html` | Architect | Rendered Tasks per Feature with tier + scope_paths + revisions on escalation |
-| `qa-verse.html` | QA Agent | Rendered list of failing tests, mapped task → test file |
-| `result.html` | Skill orchestrator | End-of-wave summary including suspicious changes |
-| `handoff.md` | Skill orchestrator | Only written when an iteration cap trips or the wave is halted |
+| File | Scope | Owner | Purpose |
+|---|---|---|---|
+| `wave-state.json` | per wave | Skill orchestrator | Source of truth: features, tasks, statuses, iteration counters, `suspicious[]`, `escalations[]`, `persona_versions` |
+| `requirement-verse.html` | per wave | Analyst | Rendered Features list with acceptance criteria |
+| `architecture-verse.html` | per wave | Architect | Rendered Tasks per Feature with tier + scope_paths + revisions on escalation |
+| `qa-verse.html` | per wave | QA Agent | Rendered list of failing tests, mapped task → test file |
+| `result.html` | per wave | Skill orchestrator | End-of-wave summary including suspicious changes |
+| `handoff.md` | per wave | Skill orchestrator | Only written when an iteration cap trips or the wave is halted |
+| `wave-wiki.html` | **all waves** | Skill orchestrator | Cross-wave index at `docs/waves/wave-wiki.html` (one level above the wave dirs). Rebuilt on every `result.html` write by scanning every `docs/waves/*/wave-state.json`. Lists all waves with status, started/finished, description, features done/total, and a link into each wave. |
 
-HTML is rendered from `wave-state.json` after every state change — JSON is canonical, HTML is presentation. Templates ship with the skill (see `templates/` directory).
+HTML is rendered from `wave-state.json` after every state change — JSON is canonical, HTML is presentation. The per-wave artifacts read one `wave-state.json`; `wave-wiki.html` aggregates across all of them and is **rebuilt from scratch** every time (idempotent — never hand-edited, never appended in place), so a re-run, `--resume`, or a manually added/removed wave directory always self-heals. Templates ship with the skill (see `templates/` directory).
 
 ## Workflow
 
@@ -256,7 +257,13 @@ Final orchestrator step:
    - `persona_versions` (the locked snapshot from Step 1)
    - Files touched (deduplicated)
    - Total agents spawned and total run time (now includes reviewer count)
-3. Surface to user with a one-paragraph summary and next-action prompt (commit? PR?).
+3. **Rebuild `docs/waves/wave-wiki.html`** from the bundled template (`templates/wave-wiki.html`):
+   - Scan **every** `docs/waves/*/wave-state.json` (not just this wave's).
+   - For each, read `wave_id`, `wave_slug`, `status`, `started_at`, `finished_at`, `initial_request` (trim to ~140 chars), feature count (`features.length`) and how many are `done`.
+   - Set each row's link to `./{{wave_id}}/result.html` when that file exists, else `./{{wave_id}}/`.
+   - Sort rows by `started_at` descending (newest first) and render **all** waves, regardless of status, with a status badge.
+   - This is a full regenerate, not an append — overwrite the file each time so it stays consistent with the wave directories on disk.
+4. Surface to user with a one-paragraph summary and next-action prompt (commit? PR?).
 
 ## Iteration caps (summary)
 

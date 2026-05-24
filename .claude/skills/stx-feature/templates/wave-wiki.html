@@ -1,0 +1,92 @@
+<!doctype html>
+<!--
+================================================================================
+  wave-wiki.html — Cross-wave index, rebuilt by orchestrator at every result.html
+  write (Step 8). Lives ONE LEVEL ABOVE the per-wave directories:
+
+      docs/waves/wave-wiki.html          ← this file (cross-wave view)
+      docs/waves/wave-<slug>-<xxx>/       ← one directory per wave
+          wave-state.json                ← canonical per-wave state (model)
+          result.html                    ← per-wave view
+
+  IDEMPOTENT REBUILD. This file is NEVER hand-edited and NEVER appended-to in
+  place. On every render the orchestrator re-scans every
+  docs/waves/*/wave-state.json and regenerates the whole table from scratch, so
+  a re-run, a --resume, or a manually added/removed wave directory always
+  self-heals to match reality. wave-state.json is canonical; this is presentation.
+
+  Rows are sorted by started_at DESCENDING (most recent wave first). Every wave
+  directory is listed regardless of status, so this doubles as a live dashboard.
+
+  PLACEHOLDERS:
+    {{GENERATED_AT}}             ISO timestamp of this rebuild
+    {{WAVE_COUNT}}               total number of wave directories found
+    {{DONE_COUNT}}               count where status == done
+    {{ACTIVE_COUNT}}             count where status in {planning,gate-1,gate-2,gate-3,dev-wave}
+    {{HALTED_COUNT}}             count where status in {halted-at-cap,blocked}
+    {{#each waves}}              one row per docs/waves/*/wave-state.json, started_at DESC
+      {{wave_id}}                wave-<slug>-<4char>  (also the directory name)
+      {{wave_slug}}
+      {{status}}                 planning | gate-1 | gate-2 | gate-3 | dev-wave | done | halted-at-cap | blocked
+      {{started_at}}
+      {{finished_at}}            "—" when null
+      {{initial_request_short}}  initial_request, trimmed to ~140 chars
+      {{features_done}}          count of features with status == done
+      {{features_total}}         features.length
+      {{link}}                   "./{{wave_id}}/result.html" when result.html exists,
+                                 else "./{{wave_id}}/" (the wave directory)
+    {{/each}}
+================================================================================
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wave Wiki — all /stx-feature waves</title>
+{{INLINE_STYLES}}
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Cross-wave index · rebuilt on every wave result</div>
+    <h1>Wave Wiki</h1>
+    <div class="meta">
+      <code>{{WAVE_COUNT}}</code> waves · <code>{{DONE_COUNT}}</code> done · <code>{{ACTIVE_COUNT}}</code> active · <code>{{HALTED_COUNT}}</code> halted/blocked<br>
+      regenerated <code>{{GENERATED_AT}}</code> from <code>docs/waves/*/wave-state.json</code>
+    </div>
+  </header>
+
+  <h2><span class="num">§1</span> All waves</h2>
+  <p>Every <code>/stx-feature</code> wave that has a directory under <code>docs/waves/</code>, newest first. This table is regenerated from each wave's canonical <code>wave-state.json</code> — it is never edited by hand.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Wave</th>
+        <th style="width:120px">Status</th>
+        <th>Description</th>
+        <th style="width:90px">Features</th>
+        <th style="width:150px">Started</th>
+        <th style="width:150px">Finished</th>
+        <th style="width:70px">Open</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each waves}}
+      <tr>
+        <td>
+          <strong>{{wave_slug}}</strong><br>
+          <span class="card-id">{{wave_id}}</span>
+        </td>
+        <td><span class="status status-{{status}}">{{status}}</span></td>
+        <td style="font-size:13.5px">{{initial_request_short}}</td>
+        <td style="font-variant-numeric:tabular-nums">{{features_done}}/{{features_total}}</td>
+        <td style="font-size:12.5px;color:var(--muted)">{{started_at}}</td>
+        <td style="font-size:12.5px;color:var(--muted)">{{finished_at}}</td>
+        <td><a href="{{link}}">open ↗</a></td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+</div>
+</body>
+</html>
