@@ -124,7 +124,7 @@ Every skill is one of three types based on where you run it:
 | Type | Meaning | Skills |
 |---|---|---|
 | **main-bound** | You're on `main` and want to start something (skill spawns a worktree) | `/stx-feature`, `/stx-fix` |
-| **worktree-bound** | You're in a feature worktree (skill operates on it) | `/stx-pr-merge`, `/stx-report` |
+| **worktree-bound** | You're in a feature worktree (skill operates on it) | `/stx-pr-merge`, `/stx-worktree-report` |
 | **any-bound** | Runs anywhere — utilities | `/stx-checkin`, `/stx-image`, `/stx-magazine-report`, `/stx-help`, `/stx-help-html` |
 
 ### `/stx-feature` — multi-agent feature wave  *(main-bound)*
@@ -178,18 +178,18 @@ Pre-flight → commit → push & PR → **build #1** → squash-merge → refres
 
 See [.claude/skills/stx-pr-merge/SKILL.md](.claude/skills/stx-pr-merge/SKILL.md).
 
-### `/stx-report` — single-file worktree HTML report  *(worktree-bound)*
+### `/stx-worktree-report` — single-file worktree HTML report  *(worktree-bound)*
 
 Produces a polished `*.html` under `docs/` documenting a worktree's changes. Same shape every time: stats, status pills, approach trade-off table, two Mermaid diagrams, per-file diffs with informative hunks, test output, deferred caveats.
 
 ```bash
-/stx-report                                          # cwd, infer everything
-/stx-report --worktree ../feature-branch             # explicit path
-/stx-report --base develop                           # diff base (default: main)
-/stx-report --title "PNG → PDF migration"            # override title
+/stx-worktree-report                                          # cwd, infer everything
+/stx-worktree-report --worktree ../feature-branch             # explicit path
+/stx-worktree-report --base develop                           # diff base (default: main)
+/stx-worktree-report --title "PNG → PDF migration"            # override title
 ```
 
-See [.claude/skills/stx-report/SKILL.md](.claude/skills/stx-report/SKILL.md).
+See [.claude/skills/stx-worktree-report/SKILL.md](.claude/skills/stx-worktree-report/SKILL.md).
 
 ### `/stx-magazine-report` — magazine-style HTML deliverable from any source  *(any-bound)*
 
@@ -279,7 +279,7 @@ npm run clean       # remove dist/
 # Smoke test skills
 node dist/skills/stx-checkin.js --dry-run
 node dist/skills/stx-image.js --help
-node dist/skills/stx-report.js --pretty
+node dist/skills/stx-worktree-report.js --pretty
 node dist/cli/install.js --list
 ```
 
@@ -312,7 +312,7 @@ stx-skills/
 │       ├── stx-checkin.ts
 │       ├── stx-pr-merge.ts
 │       ├── stx-image.ts
-│       └── stx-report.ts
+│       └── stx-worktree-report.ts
 ├── dist/                                     # gitignored — compiled output
 ├── docs/
 │   └── index.html                            # GitHub Pages — synced from help.html
@@ -333,7 +333,7 @@ stx-skills/
 │       ├── stx-pr-merge/       (SKILL.md + README.md)
 │       ├── stx-image/          (SKILL.md + README.md)
 │       ├── stx-magazine-report/(SKILL.md + README.md + prompt.md)
-│       ├── stx-report/         (SKILL.md + template.html)
+│       ├── stx-worktree-report/(SKILL.md + template.html)
 │       ├── stx-help/           (SKILL.md)
 │       └── stx-help-html/      (SKILL.md + README.md + help.html)  ← canonical doc
 └── scripts/

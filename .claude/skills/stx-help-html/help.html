@@ -893,7 +893,7 @@
               <svg class="gear-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
               Change by running <code>/stx-settings</code>. See <a href="#settings">§7 Settings</a>.
             </p>
-            <p class="step-note">If a wave <em>halted</em> instead of finishing, run <code>/stx-report</code> first to write a single HTML report into main's <code>docs/</code> — that survives worktree removal.</p>
+            <p class="step-note">If a wave <em>halted</em> instead of finishing, run <code>/stx-worktree-report</code> first to write a single HTML report into main's <code>docs/</code> — that survives worktree removal.</p>
             <p class="step-link">More → <a href="#worktree">§5 Worktree lifecycle</a>.</p>
           </div>
         </div>
@@ -1132,7 +1132,7 @@
         <strong>Everything else follows:</strong>
         <ul>
           <li><code>/stx-feature</code> and <code>/stx-fix</code> start on main because they <em>spawn</em> a worktree.</li>
-          <li><code>/stx-pr-merge</code> and <code>/stx-report</code> run inside the worktree because that's where the work lives.</li>
+          <li><code>/stx-pr-merge</code> and <code>/stx-worktree-report</code> run inside the worktree because that's where the work lives.</li>
           <li><code>/stx-checkin</code>, <code>/stx-image</code>, <code>/stx-magazine-report</code>, <code>/stx-help</code>, <code>/stx-help-html</code> are branch-agnostic — they don't care.</li>
           <li>The settings file lives in main's checkout; each new worktree gets a copy at creation.</li>
         </ul>
@@ -1288,7 +1288,7 @@
           </div>
           <ul>
             <li>/stx-pr-merge<span class="when">commit→PR→build→merge→cleanup</span></li>
-            <li>/stx-report<span class="when">HTML report of worktree changes</span></li>
+            <li>/stx-worktree-report<span class="when">HTML report of worktree changes</span></li>
             <li>/stx-feature --resume<span class="when">resume halted wave (planned)</span></li>
           </ul>
         </div>
@@ -1468,7 +1468,7 @@
           <text x="900" y="200" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#b13d2c">or discard</text>
           <text x="900" y="216" text-anchor="middle" font-family="Inter, sans-serif" font-size="9.5" fill="#6f7686">if halted</text>
         </svg>
-        <div class="caption">A worktree is born on main, lives through four agent phases, then either merges back (success) or is discarded — /stx-report writes its artifact to main first.</div>
+        <div class="caption">A worktree is born on main, lives through four agent phases, then either merges back (success) or is discarded — /stx-worktree-report writes its artifact to main first.</div>
       </div>
 
       <h4>What lives where</h4>
@@ -1499,7 +1499,7 @@
 └── ...</pre>
 
       <div class="callout callout-teal">
-        <strong>Discarding without losing work.</strong> Before <code>git worktree remove</code> on a halted wave, run <code>/stx-report</code> from inside the worktree — it writes an HTML report to main's <code>docs/</code> dir, outside the worktree being torn down.
+        <strong>Discarding without losing work.</strong> Before <code>git worktree remove</code> on a halted wave, run <code>/stx-worktree-report</code> from inside the worktree — it writes an HTML report to main's <code>docs/</code> dir, outside the worktree being torn down.
       </div>
     </section>
 
@@ -1721,10 +1721,10 @@
         </div>
       </details>
 
-      <details class="skill" id="sk-stx-report">
+      <details class="skill" id="sk-stx-worktree-report">
         <summary>
           <span class="ico">R</span>
-          <span class="nm">/stx-report<span class="one">Single-file HTML report of worktree changes. Exec summary, approach table, Mermaid diagrams, per-file diffs, test results.</span></span>
+          <span class="nm">/stx-worktree-report<span class="one">Single-file HTML report of worktree changes. Exec summary, approach table, Mermaid diagrams, per-file diffs, test results.</span></span>
           <span class="type type-wt">worktree-bound</span>
           <span class="ver">v1.0</span>
           <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
@@ -1746,13 +1746,13 @@
 
           <h4>Invocations</h4>
           <pre><span class="c"># Infer from cwd</span>
-/stx-report
+/stx-worktree-report
 
 <span class="c"># Explicit worktree</span>
-/stx-report <span class="o">--worktree</span> .claude/worktrees/wave-admin-multi-delete
+/stx-worktree-report <span class="o">--worktree</span> .claude/worktrees/wave-admin-multi-delete
 
 <span class="c"># Override defaults</span>
-/stx-report <span class="o">--base</span> develop <span class="o">--title</span> <span class="s">"Replacing the PNG download"</span></pre>
+/stx-worktree-report <span class="o">--base</span> develop <span class="o">--title</span> <span class="s">"Replacing the PNG download"</span></pre>
 
           <h4>Sections (always the same shape)</h4>
           <ol>
@@ -1839,7 +1839,7 @@
             <div class="block dontuse"><div class="lbl">Don't use when</div><ul>
               <li>Short answers, code review notes, or one-page summaries (markdown is enough)</li>
               <li>Operational dashboards that update daily</li>
-              <li>You want a worktree change-log artifact → <code>/stx-report</code></li>
+              <li>You want a worktree change-log artifact → <code>/stx-worktree-report</code></li>
             </ul></div>
           </div>
 

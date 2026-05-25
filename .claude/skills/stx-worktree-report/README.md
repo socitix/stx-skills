@@ -1,4 +1,4 @@
-# stx-report — design notes
+# stx-worktree-report — design notes
 
 Captures the prompt and HTML scaffold used to produce a polished single-file report from a finished (or near-finished) worktree.
 
@@ -21,16 +21,16 @@ A finished worktree has three audiences:
 
 ## What the CLI helper does
 
-`stx-report` (the bin) is a thin context-collector. When run from a terminal in a worktree:
+`stx-worktree-report` (the bin) is a thin context-collector. When run from a terminal in a worktree:
 
 ```bash
-stx-report                  # JSON to stdout
-stx-report --base develop   # diff against a non-default base
-stx-report --pretty         # human-readable summary
-stx-report --help
+stx-worktree-report                  # JSON to stdout
+stx-worktree-report --base develop   # diff against a non-default base
+stx-worktree-report --pretty         # human-readable summary
+stx-worktree-report --help
 ```
 
-It emits worktree path, branch, base branch, diff stat, name-status list, recent commits, and a flag indicating whether changes are uncommitted. Claude consumes this when invoked as `/stx-report` to skip the gather-context step. Standalone, it's a useful sanity-check before opening a PR.
+It emits worktree path, branch, base branch, diff stat, name-status list, recent commits, and a flag indicating whether changes are uncommitted. Claude consumes this when invoked as `/stx-worktree-report` to skip the gather-context step. Standalone, it's a useful sanity-check before opening a PR.
 
 The CLI never writes the HTML file — Claude does. Splitting context-gathering from report-writing keeps the CLI tiny and the report tunable per-project.
 
@@ -66,5 +66,5 @@ The template is intentionally one file. To customise:
 
 ## See also
 
-- [SKILL.md](./SKILL.md) — the prompt that runs when `/stx-report` is invoked.
+- [SKILL.md](./SKILL.md) — the prompt that runs when `/stx-worktree-report` is invoked.
 - [template.html](./template.html) — the HTML scaffold with `{{TOKEN}}` placeholders.

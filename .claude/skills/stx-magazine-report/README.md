@@ -48,7 +48,7 @@ never mutates source code or git state. Safe in main, safe in any worktree,
 safe in a non-repo working folder.
 
 It is **not** worktree-bound: the deliverable is a stand-alone artifact, not
-a record of code changes. (If you want the latter, that's `/stx-report`.)
+a record of code changes. (If you want the latter, that's `/stx-worktree-report`.)
 
 ## Four style palettes
 

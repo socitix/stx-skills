@@ -8,7 +8,7 @@
     "stx-checkin": "./dist/skills/stx-checkin.js",
     "stx-pr-merge": "./dist/skills/stx-pr-merge.js",
     "stx-image": "./dist/skills/stx-image.js",
-    "stx-report": "./dist/skills/stx-report.js"
+    "stx-worktree-report": "./dist/skills/stx-worktree-report.js"
   },
   "scripts": {
     "build": "tsc && npm run prepare-docs",

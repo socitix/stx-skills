@@ -317,4 +317,4 @@ This skill does not have a CLI binary — it is purely conversational and runs i
 - [`/stx-fix`](../stx-fix/SKILL.md) — the single-bug sibling skill (shares `stx-qa.md`)
 - [`/stx-checkin`](../stx-checkin/SKILL.md) — used to commit/push after wave completion
 - [`/stx-pr-merge`](../stx-pr-merge/SKILL.md) — used to open and merge the wave PR
-- [`/stx-report`](../stx-report/SKILL.md) — alternative end-of-wave reporting
+- [`/stx-worktree-report`](../stx-worktree-report/SKILL.md) — alternative end-of-wave reporting

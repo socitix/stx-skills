@@ -53,7 +53,7 @@ See `docs/temp/REQ-worktree-enforcement-and-cursor-integration.md`.
 
 - **`/stx-checkin`** is invoked at the end of the loop if `commit_policy = commit-after-green`.
 - **`/stx-pr-merge`** is invoked at the end of the loop if `commit_policy = commit-and-pr` AND the user later approves the PR/merge chain.
-- **`/stx-report`** can be run after a green loop to produce a polished HTML summary of what changed.
+- **`/stx-worktree-report`** can be run after a green loop to produce a polished HTML summary of what changed.
 
 The skill doesn't shell out to those automatically — it surfaces them as the recommended next step in §9 of the rendered prompt.
 

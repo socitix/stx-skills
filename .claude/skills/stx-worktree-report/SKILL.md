@@ -1,11 +1,11 @@
 ---
-name: stx-report
+name: stx-worktree-report
 description: Generate a polished single-file HTML report explaining the changes made in a git worktree (or branch). Renders an executive summary, approach trade-off table, architecture diagrams (Mermaid), per-file diffs, test results, and deferred caveats — using the embedded template in this skill so every report has a consistent shape.
 version: 1.0.0
 author: STX
 ---
 
-# /stx-report
+# /stx-worktree-report
 
 Produces a self-contained `*.html` file under `docs/` that documents the work done in a git worktree (or feature branch). The output is the same shape every time: executive summary with stats, approach trade-off table, architecture diagrams via Mermaid, file-by-file change summary with inline diffs, test results, and a "deferred caveats" section.
 
@@ -19,19 +19,19 @@ Skip it for trivial single-line fixes — `git log` is enough.
 
 ## Usage
 
-User invokes via `/stx-report`, optionally with arguments:
+User invokes via `/stx-worktree-report`, optionally with arguments:
 
 ```
-/stx-report                                # use cwd, infer everything
-/stx-report --worktree <path>              # explicit worktree path
-/stx-report --base <branch>                # diff base (default: main)
-/stx-report --output <path.html>           # explicit output file
-/stx-report --title "<one-line title>"     # override report title
+/stx-worktree-report                                # use cwd, infer everything
+/stx-worktree-report --worktree <path>              # explicit worktree path
+/stx-worktree-report --base <branch>                # diff base (default: main)
+/stx-worktree-report --output <path.html>           # explicit output file
+/stx-worktree-report --title "<one-line title>"     # override report title
 ```
 
-The CLI helper `stx-report` (when run from a terminal) prints worktree context as JSON. When invoked as a slash command, follow the procedure below.
+The CLI helper `stx-worktree-report` (when run from a terminal) prints worktree context as JSON. When invoked as a slash command, follow the procedure below.
 
-## Procedure (when invoked as `/stx-report`)
+## Procedure (when invoked as `/stx-worktree-report`)
 
 ### Step 1 — Resolve scope
 

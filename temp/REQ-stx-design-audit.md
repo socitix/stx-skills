@@ -49,7 +49,7 @@ src/styles/tokens.css                # Optional: CSS custom properties
 2. **Diagnose** specific issues if partially valid.
 3. **Suggest + scaffold** the canonical structure if missing or non-standard.
 4. **Surface** non-standard entries (e.g. `DESIGN_SPECS.md` at root, design files outside `docs/design/`, hex values in components that should be tokens).
-5. **Report** results in a terse terminal summary plus an optional HTML artifact (mirroring `stx-report`).
+5. **Report** results in a terse terminal summary plus an optional HTML artifact (mirroring `stx-worktree-report`).
 
 ## Non-goals
 
@@ -64,7 +64,7 @@ src/styles/tokens.css                # Optional: CSS custom properties
 
 **Proposed name:** `stx-design-audit`
 
-Matches existing skill prefix convention (`stx-checkin`, `stx-feature`, `stx-fix`, `stx-image`, `stx-report`). "Audit" is more accurate than "check" because the skill produces a report and recommends actions, not just a pass/fail.
+Matches existing skill prefix convention (`stx-checkin`, `stx-feature`, `stx-fix`, `stx-image`, `stx-worktree-report`). "Audit" is more accurate than "check" because the skill produces a report and recommends actions, not just a pass/fail.
 
 **Alternatives considered:**
 
@@ -78,7 +78,7 @@ Matches existing skill prefix convention (`stx-checkin`, `stx-feature`, `stx-fix
 | --- | --- |
 | (none) | Read-only audit; prints summary to terminal. |
 | `--fix` | Interactive — for each missing or non-standard item, prompt and apply. |
-| `--report` | Writes `docs/temp/design-audit-<YYYYMMDD>.html` (Mermaid + file diffs) using the same template family as `stx-report`. |
+| `--report` | Writes `docs/temp/design-audit-<YYYYMMDD>.html` (Mermaid + file diffs) using the same template family as `stx-worktree-report`. |
 
 Must work in **main** or **worktree** — read-only audit is safe on main; `--fix` follows the global worktree rule (refuses to write on main without explicit override).
 
@@ -165,7 +165,7 @@ For each finding, prompt:
 
 ### `--report` artifact
 
-Single-file HTML using the `stx-report` template family (see `.claude/skills/gen-worktree-report/`):
+Single-file HTML using the `stx-worktree-report` template family (see `.claude/skills/gen-worktree-report/`):
 
 - Executive summary (valid/invalid + counts)
 - Each Level 1–4 finding with file:line links
@@ -226,7 +226,7 @@ A v1 implementation is done when:
 - [ ] `/stx-design-audit` runs on a sibling project lacking the structure (e.g. `findependence` if it doesn't have one yet) and offers to scaffold.
 - [ ] `/stx-design-audit --fix` correctly replaces a planted hex value with a Tailwind token reference.
 - [ ] `/stx-design-audit --report` produces a single-file HTML artifact in `docs/temp/`.
-- [ ] Skill metadata, README, and `SKILL.md` follow the same pattern as `stx-checkin` and `stx-report`.
+- [ ] Skill metadata, README, and `SKILL.md` follow the same pattern as `stx-checkin` and `stx-worktree-report`.
 - [ ] Read-only audit is safe on `main`; `--fix` refuses to write without a worktree.
 
 ---
@@ -245,4 +245,4 @@ A v1 implementation is done when:
 
 - `~/.claude/CLAUDE.md` → "CRITICAL RULE: Follow The Project's Design System" (the rule this skill enforces).
 - `socitix` reference layout: branch `chore/consolidate-design-docs`.
-- Sibling skills for style/structure: `stx-checkin`, `stx-report`, `stx-image`.
+- Sibling skills for style/structure: `stx-checkin`, `stx-worktree-report`, `stx-image`.

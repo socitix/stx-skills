@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * stx-report Skill — CLI helper
+ * stx-worktree-report Skill — CLI helper
  *
  * Standalone, this command prints worktree context (branch, base, diff
  * stat, name-status, recent commits) so a human or another tool can sanity
  * check what's in a feature branch before reviewing or opening a PR.
  *
- * When `/stx-report` is invoked from Claude Code, the slash
+ * When `/stx-worktree-report` is invoked from Claude Code, the slash
  * command's prompt (see SKILL.md) reads the gathered context and fills
  * the HTML template. Claude is the one that writes the .html file — this
  * CLI never produces HTML.
@@ -87,11 +87,11 @@ function parseArgs(args: string[]): Options {
 
 function showHelp(): void {
   console.log('');
-  console.log(c.bold('stx-report') + ' — gather worktree context for a report');
+  console.log(c.bold('stx-worktree-report') + ' — gather worktree context for a report');
   console.log('');
   console.log(c.bold('USAGE'));
-  console.log('  stx-report [options]');
-  console.log('  stx-report [options] <worktree-path>');
+  console.log('  stx-worktree-report [options]');
+  console.log('  stx-worktree-report [options] <worktree-path>');
   console.log('');
   console.log(c.bold('OPTIONS'));
   console.log('  --worktree <path>    Worktree to analyse (default: cwd)');
@@ -100,12 +100,12 @@ function showHelp(): void {
   console.log('  -h, --help           Show this help');
   console.log('');
   console.log(c.bold('EXAMPLES'));
-  console.log('  stx-report                            # JSON for the current worktree');
-  console.log('  stx-report --pretty                   # human summary');
-  console.log('  stx-report --base develop             # diff against develop');
-  console.log('  stx-report ../findependence-feature   # explicit worktree path');
+  console.log('  stx-worktree-report                            # JSON for the current worktree');
+  console.log('  stx-worktree-report --pretty                   # human summary');
+  console.log('  stx-worktree-report --base develop             # diff against develop');
+  console.log('  stx-worktree-report ../findependence-feature   # explicit worktree path');
   console.log('');
-  console.log(c.dim('When invoked as the /stx-report slash command in Claude Code,'));
+  console.log(c.dim('When invoked as the /stx-worktree-report slash command in Claude Code,'));
   console.log(c.dim("see the skill's SKILL.md for the full report-writing procedure."));
   console.log('');
 }
