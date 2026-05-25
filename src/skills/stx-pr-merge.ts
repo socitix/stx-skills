@@ -18,6 +18,8 @@
  */
 
 import { execSync } from 'child_process';
+import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import * as readline from 'readline';
 
@@ -62,6 +64,11 @@ interface CliOptions {
   skipBuild2: boolean;
   message?: string;
   help: boolean;
+  // Stand-alone wave-usage logging mode (also runs inline during the full chain).
+  logUsage: boolean;
+  worktreePath?: string;
+  branchOverride?: string;
+  waveStatePath?: string;
 }
 
 function parseArgs(args: string[]): CliOptions {
@@ -73,6 +80,7 @@ function parseArgs(args: string[]): CliOptions {
     skipBuild1: false,
     skipBuild2: false,
     help: false,
+    logUsage: false,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -112,6 +120,18 @@ function parseArgs(args: string[]): CliOptions {
       case '--message':
         options.message = args[++i];
         break;
+      case '--log-usage':
+        options.logUsage = true;
+        break;
+      case '--worktree-path':
+        options.worktreePath = args[++i];
+        break;
+      case '--branch':
+        options.branchOverride = args[++i];
+        break;
+      case '--wave-state':
+        options.waveStatePath = args[++i];
+        break;
       default:
         // Ignore unknown args silently — keeps the door open for future flags
         break;
@@ -139,6 +159,12 @@ ${c.bold('OPTIONS')}
   --skip-build-2         Skip post-merge build (NOT RECOMMENDED)
   -f, --force            Skip non-destructive confirmations
   -h, --help             Show this help
+
+${c.bold('WAVE USAGE LOGGING')}
+  --log-usage            Only record /stx-feature wave token+time usage, then exit
+  --worktree-path <s>    Feature worktree path (default: current worktree root)
+  --branch <s>           Branch to match a wave by (default: current branch)
+  --wave-state <s>       Explicit wave-state.json path (skips auto-discovery)
 
 ${c.bold('CHAIN')}
   pre-flight → commit → push & PR → build #1 → squash-merge →
@@ -289,6 +315,249 @@ function getStatus(): GitFile[] {
     const filePath = line.substring(3);
     return { status, path: filePath };
   });
+}
+
+// =============================================================================
+// Wave usage logging (token + wall-clock time)
+// =============================================================================
+//
+// At close-out we record what a /stx-feature wave actually cost: total tokens
+// (orchestrator sessions + every subagent) and wall-clock time. Claude Code
+// writes every turn's usage to disk under ~/.claude/projects/<encoded-cwd>/, so
+// this is a pure reader — no model instrumentation. Because each wave owns its
+// own worktree (global worktree rule), that one project directory is exactly
+// this wave's spend, which is what makes the sum unambiguous.
+
+interface UsageTokens {
+  input: number;
+  cache_creation: number;
+  cache_read: number;
+  output: number;
+  total: number;
+}
+
+interface UsageBlock {
+  computed_at: string;
+  started_at: string | null;
+  ended_at: string;
+  wall_clock_seconds: number | null;
+  wall_clock_human: string | null;
+  tokens: UsageTokens;
+  n_sessions: number;
+  n_subagents: number;
+  notes?: string;
+}
+
+/**
+ * Encode an absolute cwd into the ~/.claude/projects directory name Claude Code
+ * uses: every `/` and `.` becomes `-`. e.g. `/a/b/.claude/wt/x` →
+ * `-a-b--claude-wt-x` (the `/.claude/` segment yields `--claude-`).
+ */
+function encodeProjectDir(absPath: string): string {
+  return absPath.replace(/[/.]/g, '-');
+}
+
+/** Sum the four token fields off one transcript line's usage into `tokens`. */
+function accumulateUsageLine(usage: Record<string, unknown>, tokens: UsageTokens): void {
+  tokens.input += (usage.input_tokens as number) || 0;
+  tokens.cache_creation += (usage.cache_creation_input_tokens as number) || 0;
+  tokens.cache_read += (usage.cache_read_input_tokens as number) || 0;
+  tokens.output += (usage.output_tokens as number) || 0;
+}
+
+/**
+ * Read one .jsonl transcript and fold every `type:"assistant"` line's
+ * `message.usage` into `tokens`, skipping lines whose `uuid` was already seen
+ * (resumed/compacted sessions repeat lines — dedup keeps the sum honest).
+ */
+function sumTranscriptFile(file: string, tokens: UsageTokens, seenUuids: Set<string>): void {
+  let content: string;
+  try {
+    content = fs.readFileSync(file, 'utf8');
+  } catch {
+    return; // unreadable file — skip, never throw (best-effort contract)
+  }
+  for (const line of content.split('\n')) {
+    if (!line.trim()) continue;
+    let obj: { type?: string; uuid?: string; message?: { usage?: Record<string, unknown> } };
+    try {
+      obj = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (obj.type !== 'assistant') continue;
+    const usage = obj.message?.usage;
+    if (!usage) continue;
+    if (obj.uuid) {
+      if (seenUuids.has(obj.uuid)) continue;
+      seenUuids.add(obj.uuid);
+    }
+    accumulateUsageLine(usage, tokens);
+  }
+}
+
+interface ProjectDirTotals {
+  tokens: UsageTokens;
+  nSessions: number;
+  nSubagents: number;
+}
+
+/**
+ * Sum usage across an entire ~/.claude/projects/<encoded> directory:
+ * every top-level `.jsonl` (orchestrator sessions) plus every `.jsonl` inside
+ * each session's `subagents/` folder (the wave's subagents — usually the bulk).
+ */
+function sumProjectDir(projectDir: string): ProjectDirTotals {
+  const tokens: UsageTokens = { input: 0, cache_creation: 0, cache_read: 0, output: 0, total: 0 };
+  const seenUuids = new Set<string>();
+  let nSessions = 0;
+  let nSubagents = 0;
+
+  if (!fs.existsSync(projectDir)) {
+    return { tokens, nSessions, nSubagents };
+  }
+
+  const files: string[] = [];
+  for (const entry of fs.readdirSync(projectDir, { withFileTypes: true })) {
+    if (entry.isFile() && entry.name.endsWith('.jsonl')) {
+      files.push(path.join(projectDir, entry.name));
+      nSessions++;
+    } else if (entry.isDirectory()) {
+      const subagentsDir = path.join(projectDir, entry.name, 'subagents');
+      if (!fs.existsSync(subagentsDir)) continue;
+      for (const sub of fs.readdirSync(subagentsDir)) {
+        if (sub.endsWith('.jsonl')) {
+          files.push(path.join(subagentsDir, sub));
+          nSubagents++;
+        }
+      }
+    }
+  }
+
+  for (const f of files) {
+    sumTranscriptFile(f, tokens, seenUuids);
+  }
+  tokens.total = tokens.input + tokens.cache_creation + tokens.cache_read + tokens.output;
+  return { tokens, nSessions, nSubagents };
+}
+
+/**
+ * Find the wave-state.json under <worktree>/docs/waves/ that belongs to this
+ * branch/worktree. Scored: worktree_path match beats branch match. Returns null
+ * when nothing matches (e.g. a manual branch or a /stx-fix — usage is skipped).
+ */
+function findWaveStatePath(worktreePath: string, branch: string): string | null {
+  const wavesDir = path.join(worktreePath, 'docs', 'waves');
+  if (!fs.existsSync(wavesDir)) return null;
+
+  let best: { file: string; score: number } | null = null;
+  for (const entry of fs.readdirSync(wavesDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const candidate = path.join(wavesDir, entry.name, 'wave-state.json');
+    if (!fs.existsSync(candidate)) continue;
+    let ws: { worktree_path?: string; branch?: string };
+    try {
+      ws = JSON.parse(fs.readFileSync(candidate, 'utf8'));
+    } catch {
+      continue;
+    }
+    let score = 0;
+    if (ws.worktree_path && path.resolve(ws.worktree_path) === path.resolve(worktreePath)) score += 2;
+    if (ws.branch && ws.branch === branch) score += 1;
+    if (score > 0 && (!best || score > best.score)) {
+      best = { file: candidate, score };
+    }
+  }
+  return best ? best.file : null;
+}
+
+/** Render a duration in seconds as a compact "1d 2h 3m" (always shows minutes). */
+function humanDuration(totalSeconds: number): string {
+  let s = totalSeconds;
+  const days = Math.floor(s / 86400);
+  s -= days * 86400;
+  const hours = Math.floor(s / 3600);
+  s -= hours * 3600;
+  const minutes = Math.floor(s / 60);
+  const parts: string[] = [];
+  if (days) parts.push(`${days}d`);
+  if (hours) parts.push(`${hours}h`);
+  parts.push(`${minutes}m`);
+  return parts.join(' ');
+}
+
+/** Format a token count as e.g. "4.18M" / "0.42M" / "12.3K". */
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
+/**
+ * Best-effort: record this wave's token + time usage into its wave-state.json.
+ * NEVER throws — any failure prints one warning line and returns, so a logging
+ * problem can never fail or roll back a merge.
+ */
+function logWaveUsage(worktreePath: string, branch: string, explicitWaveState?: string): void {
+  try {
+    const waveStatePath = explicitWaveState ?? findWaveStatePath(worktreePath, branch);
+    if (!waveStatePath) {
+      console.log(c.dim('  No matching /stx-feature wave for this branch — usage logging skipped.'));
+      return;
+    }
+
+    const ws = JSON.parse(fs.readFileSync(waveStatePath, 'utf8')) as {
+      started_at?: string;
+      usage?: UsageBlock;
+    } & Record<string, unknown>;
+
+    const projectDir = path.join(os.homedir(), '.claude', 'projects', encodeProjectDir(path.resolve(worktreePath)));
+    const { tokens, nSessions, nSubagents } = sumProjectDir(projectDir);
+
+    const now = new Date();
+    const startedAt = ws.started_at ?? null;
+    let wallSeconds: number | null = null;
+    let wallHuman: string | null = null;
+    if (startedAt) {
+      const startMs = new Date(startedAt).getTime();
+      if (!Number.isNaN(startMs)) {
+        wallSeconds = Math.max(0, Math.round((now.getTime() - startMs) / 1000));
+        wallHuman = humanDuration(wallSeconds);
+      }
+    }
+
+    const noteFlags: string[] = [];
+    if (!startedAt || wallSeconds === null) noteFlags.push('no-started-at');
+    if (tokens.total === 0) noteFlags.push('no-transcripts-found');
+
+    const usage: UsageBlock = {
+      computed_at: now.toISOString(),
+      started_at: startedAt,
+      ended_at: now.toISOString(),
+      wall_clock_seconds: wallSeconds,
+      wall_clock_human: wallHuman,
+      tokens,
+      n_sessions: nSessions,
+      n_subagents: nSubagents,
+    };
+    if (noteFlags.length) usage.notes = noteFlags.join('; ');
+
+    ws.usage = usage;
+    fs.writeFileSync(waveStatePath, JSON.stringify(ws, null, 2) + '\n', 'utf8');
+
+    const rel = path.relative(worktreePath, waveStatePath) || waveStatePath;
+    console.log(
+      c.success(
+        `  ✓ Wave usage logged: ${formatTokens(tokens.total)} tokens, ${wallHuman ?? '—'} ` +
+          `across ${nSessions} session(s), ${nSubagents} subagents → ${rel}`,
+      ),
+    );
+    if (noteFlags.length) console.log(c.dim(`    (notes: ${noteFlags.join('; ')})`));
+  } catch (err) {
+    console.log(
+      c.warn(`  ⚠ Wave usage logging skipped (best-effort): ${err instanceof Error ? err.message : String(err)}`),
+    );
+  }
 }
 
 // =============================================================================
@@ -729,6 +998,16 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
+  // Stand-alone wave-usage logging — invoked by SKILL.md's best-effort step and
+  // by anyone wanting to (re)compute usage for a wave without running the chain.
+  if (options.logUsage) {
+    const worktree = options.worktreePath ?? (isGitRepo() ? getWorktreeRoot() : process.cwd());
+    const branch = options.branchOverride ?? (isGitRepo() ? getCurrentBranch() : '');
+    console.log(c.bold('\n📊 Recording /stx-feature wave usage\n'));
+    logWaveUsage(worktree, branch, options.waveStatePath);
+    process.exit(0); // best-effort: always succeed, never block a caller
+  }
+
   console.log(c.bold('\n🚢 stx-pr-merge — Ship a feature branch end-to-end\n'));
 
   if (options.dryRun) {
@@ -738,6 +1017,16 @@ async function main(): Promise<void> {
   try {
     // Step 0: Pre-flight
     const ctx = await step0_preflight(options);
+
+    // Best-effort: record this wave's token + time usage BEFORE the commit, so
+    // the updated wave-state.json rides along in the PR and is merged. A logging
+    // failure only warns — it never fails or rolls back the merge.
+    console.log(c.bold('\n  Recording wave usage (best-effort)…'));
+    if (options.dryRun) {
+      console.log(c.dim('  [DRY RUN] would sum ~/.claude/projects/<worktree> into docs/waves/*/wave-state.json'));
+    } else {
+      logWaveUsage(ctx.featureWorktree, ctx.branch, options.waveStatePath);
+    }
 
     // Step 1: Commit
     await step1_commit(ctx, options);

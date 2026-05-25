@@ -112,10 +112,25 @@ stx-pr-merge.ts
 │   ├── step5_refreshMain()
 │   ├── step6_cleanupWorktree()
 │   └── step7_deleteLocalBranch()
+├── Wave usage logging              # token + wall-clock time per /stx-feature wave
+│   ├── encodeProjectDir()          # cwd → ~/.claude/projects dir name
+│   ├── sumProjectDir()             # sessions + */subagents/*.jsonl, dedup by uuid
+│   ├── findWaveStatePath()         # match docs/waves/*/wave-state.json to branch
+│   └── logWaveUsage()              # best-effort; writes the `usage` block
 └── Halt helpers
     ├── halt(reason, context)        # prints state + exits non-zero
     └── confirmStep(label)           # interactive-mode gate
 ```
+
+## Why wave usage logging lives here (not in `/stx-feature`)
+
+A `/stx-feature` wave finishes — and renders its `result.html` — *before* the branch is merged. The merge is what truly closes the episode, and `/stx-pr-merge` is the one step that runs at that boundary with the worktree path, branch, and PR number already in hand. So this is where the wave's final token + time tally is taken.
+
+The record is written **before the commit step** so the updated `wave-state.json` is staged into the PR and merged — no post-merge write to a clean `main`, no separate database. Each wave owns its worktree, and Claude Code writes every turn's usage (orchestrator *and* every subagent) under `~/.claude/projects/<encoded-worktree>/`, so summing that one directory — deduped by line `uuid` — is exactly this wave's spend. The whole thing is a pure reader of on-disk transcripts; nothing instruments the model.
+
+**Best-effort by contract.** `logWaveUsage()` never throws and the step always exits 0. A merge must never fail because usage couldn't be tallied. Branches with no matching wave (a manual branch, or a `/stx-fix`) are skipped silently.
+
+**Deliberately out of scope (v1):** estimated USD cost, `/stx-fix` episodes (no wave JSON), surfacing the numbers in `result.html` / `wave-wiki.html` (the data lands in `wave-state.json`; rendering it is a follow-up), and the kickoff turns before Step 0.5 creates the worktree (no subagents run there).
 
 ## Future enhancements
 

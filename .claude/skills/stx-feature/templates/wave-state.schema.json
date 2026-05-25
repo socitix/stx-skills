@@ -197,6 +197,32 @@
         "dev_tier_api": { "type": "string", "description": "Version of .claude/agents/stx-dev-tier-api.md" },
         "dev_tier_ui": { "type": "string", "description": "Version of .claude/agents/stx-dev-tier-ui.md" }
       }
+    },
+    "usage": {
+      "type": "object",
+      "description": "Token + wall-clock usage for the whole wave. Written by /stx-pr-merge at close-out (before the commit step, so it merges with the PR) by summing message.usage across ~/.claude/projects/<encoded-worktree>/ — every orchestrator session AND every subagent transcript (*/subagents/*.jsonl) — deduped by line uuid. Because each wave owns its worktree, that directory is exactly this wave's spend. Time is started_at -> close-out, wall-clock.",
+      "required": ["computed_at", "tokens"],
+      "properties": {
+        "computed_at": { "type": "string", "format": "date-time", "description": "When the usage block was written." },
+        "started_at": { "type": ["string", "null"], "format": "date-time", "description": "Copied from the wave's started_at; null if absent." },
+        "ended_at": { "type": "string", "format": "date-time", "description": "Close-out time (= computed_at)." },
+        "wall_clock_seconds": { "type": ["integer", "null"], "minimum": 0, "description": "ended_at - started_at, in seconds. Null if started_at is absent/unparseable." },
+        "wall_clock_human": { "type": ["string", "null"], "description": "Human-readable duration, e.g. \"2h 2m\"." },
+        "tokens": {
+          "type": "object",
+          "required": ["input", "cache_creation", "cache_read", "output", "total"],
+          "properties": {
+            "input": { "type": "integer", "minimum": 0 },
+            "cache_creation": { "type": "integer", "minimum": 0 },
+            "cache_read": { "type": "integer", "minimum": 0 },
+            "output": { "type": "integer", "minimum": 0 },
+            "total": { "type": "integer", "minimum": 0, "description": "Sum of the four token fields above." }
+          }
+        },
+        "n_sessions": { "type": "integer", "minimum": 0, "description": "Distinct orchestrator session transcripts summed." },
+        "n_subagents": { "type": "integer", "minimum": 0, "description": "Subagent transcripts summed (Analyst, Architect, QA, Reviewer, tier Devs)." },
+        "notes": { "type": "string", "description": "Flags, e.g. 'no-started-at', 'no-transcripts-found'." }
+      }
     }
   }
 }
