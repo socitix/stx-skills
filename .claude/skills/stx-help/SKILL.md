@@ -43,8 +43,8 @@ MAIN-BOUND       run on main, before any worktree exists
   /stx-skill-settings View/edit project settings (planned)
 
 WORKTREE-BOUND   run inside a feature worktree
-  /stx-pr-merge       Commit → PR → build → squash-merge → cleanup chain
-  /stx-report         Generate HTML report of worktree changes
+  /stx-pr-merge          Commit → PR → build → squash-merge → cleanup chain
+  /stx-worktree-report   Generate HTML report of worktree changes
 
 ANY-BOUND        runs anywhere — main or any worktree
   /stx-checkin           Secure commit + push with security scan

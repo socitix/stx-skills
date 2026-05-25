@@ -101,7 +101,7 @@ Code style is subjective. If QA can reject a green-test Dev iteration because "t
 
 - `/stx-checkin` — invoked after wave done if `commit_policy == commit-after-green`.
 - `/stx-pr-merge` — invoked after wave done if `commit_policy == commit-and-pr` AND the user approves the PR/merge chain.
-- `/stx-report` — alternative end-of-wave reporting. `result.html` is wave-focused; `/stx-report` is worktree-focused.
+- `/stx-worktree-report` — alternative end-of-wave reporting. `result.html` is wave-focused; `/stx-worktree-report` is worktree-focused.
 - `/stx-fix` — the sibling for single bugs.
 
 ## What this skill explicitly does NOT do
