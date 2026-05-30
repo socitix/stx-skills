@@ -93,6 +93,18 @@ This does not violate "waves are independent" (see the "does NOT do" section): t
 
 The user's auto-memory says "halt if any agent loops >3× on the same topic." Same task = same topic, so soft cap 3 honors the memory. Hard cap 5 is the absolute ceiling per task; if a single task can't be done in 5 attempts, the architecture is wrong and Architect amendment hasn't helped.
 
+## Why `--autonomous` exists (v1.4)
+
+Three gates are the right default — they catch the three classes of expensive bug at the cheapest review moment. But they are wrong when the user is **not the audience for the review**: scripted invocations, scheduled re-runs, or the deliberate choice to let the agents push a small feature through end-to-end and review the diff at the end instead of mid-flight.
+
+`--autonomous` collapses every interactive pause that does not involve **destructive work**, **a commit/push**, or a **reviewer halt verdict**. Gates 1/2/3 are auto-approved (each row appended to `wave-state.json.gates[]` so `result.html` can show what was skipped); the Analyst and Architect are told `autonomous: true` and decompose on best judgment instead of interviewing; the dry-run boundary becomes "continue past dry-run." What is pointedly **not** bypassed:
+
+- Commits, pushes, PR opens, merges — same global rule as everywhere else (no commits/deploys unattended). `result.html` surfaces *"Wave complete. Changes uncommitted on `<branch>`. Run `/stx-checkin` or `/stx-pr-merge` to ship."*
+- Reviewer halt verdicts (`test-file-edit-detected`, `assertion-weakened`, `sut-mocked`), iteration caps (soft 3, hard 5), suspicious-changes ceiling (3 per task), and out-of-scope file edits all still STOP and surface to the user.
+- Worktree removal, branch deletion, force-push — never autonomous.
+
+The required input is unchanged: `/stx-feature --autonomous` without a feature description halts with a one-line error. The skill never fabricates `initial_request` — autonomous means "skip the gates," not "guess what the user wants."
+
 ## Why story-style code is a guideline, not a halt
 
 Code style is subjective. If QA can reject a green-test Dev iteration because "the function names aren't action-named enough," loops stall on aesthetics. The right place for style is in the Dev prompt prelude (it's there in `base.md`) — agents will follow it when they can, and style review happens at PR time, not in the loop.

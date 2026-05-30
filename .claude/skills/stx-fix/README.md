@@ -26,6 +26,17 @@ The skill never starts the loop without showing the user the rendered prompt and
 1. **Misunderstood requirement is the most expensive bug.** If the user said "Pro Monthly should be marked Active" and the orchestrator interpreted that as "show a green badge" when the user meant "the entitlement gating should treat it as active," the test will be green but the bug will still be there. The acceptance gate catches that before agents burn cycles.
 2. **The form is doing semantic compression.** Three or four user sentences become 200 lines of agent prompt. Showing the rendered output is the cheapest way to verify that compression preserved meaning.
 
+## Why `--autonomous` exists (v1.2)
+
+The acceptance gate is the right default, but it's wrong for two real workflows:
+
+- **Batch retries after a halted loop.** The user already saw the rendered prompt last session, the form fields haven't changed, and forcing them to re-approve is friction without value.
+- **Scripted invocations.** Cron-triggered or CI-triggered fixes (via `/schedule` or external systems) can't sit on an `AskUserQuestion`.
+
+`--autonomous` resolves both: the gate is auto-approved, the optional-field interview is skipped, and the rendered prompt is still printed to stdout as the audit trail. What it pointedly does **not** bypass is anything destructive — `commit_policy` is forced to `no-commit` (per the global "Autonomous agent special rules" — no commits/deploys while unattended), reviewer halts and test-file edits still stop the loop, and the four required fields (`title`, `issues`, `repro`, `expected`) must be supplied at invocation or the skill halts with a one-line error.
+
+The bar for "can `--autonomous` skip this?" is the same as the bar everywhere else in the user's global rules: **interactive confirmation** of something already implied → bypass; **destructive operation** or **commit/deploy** → never bypass.
+
 ## Why iteration caps are explicit
 
 Loops without caps drift. The skill enforces two caps from the user's auto-memory (`feedback_qa_fixer_workflow.md`):

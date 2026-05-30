@@ -41,7 +41,22 @@
         "continue_past_dry_run": { "type": "boolean" },
         "vitest_install_allowed": { "type": "boolean" },
         "use_browser_mcp": { "type": "boolean" },
-        "commit_policy": { "enum": ["no-commit", "commit-after-green", "commit-and-pr"] }
+        "commit_policy": { "enum": ["no-commit", "commit-after-green", "commit-and-pr"] },
+        "autonomous": { "type": "boolean", "description": "True when /stx-feature was invoked with --autonomous. When true, the orchestrator auto-approved gates 1/2/3, the worktree confirmation, the Analyst/Architect interview rounds, the continue-past-dry-run choice, and forced commit_policy=\"no-commit\" for close-out. Never bypasses destructive ops, reviewer halt verdicts, or iteration caps." }
+      }
+    },
+    "gates": {
+      "type": "array",
+      "description": "Audit trail of approvals. One row per gate event. In interactive mode each row is logged after explicit user approval; in --autonomous mode rows are written with auto_approved=true and reason=\"autonomous mode\".",
+      "items": {
+        "type": "object",
+        "required": ["gate", "auto_approved", "approved_at"],
+        "properties": {
+          "gate": { "enum": ["worktree", "requirement_verse", "architecture_verse", "qa_verse", "post_wave_commit"] },
+          "auto_approved": { "type": "boolean" },
+          "approved_at": { "type": "string", "format": "date-time" },
+          "reason": { "type": "string", "description": "\"autonomous mode\" when auto-approved; free-text or empty when user-approved." }
+        }
       }
     },
     "out_of_scope": {
