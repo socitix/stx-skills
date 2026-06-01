@@ -1512,20 +1512,21 @@
       <div class="sect-tag">Click any row to expand.</div>
 
       <div class="callout">
-        <strong>New in v1.9:</strong> The <code>stx-reviewer</code> persona joins the wave loop between Dev hand-back and QA rerun. Reads the Dev's diff, emits a structured verdict (<code>approved</code>, <code>concerns[]</code>, or one of three instant-halt verdicts for test-file edits, weakened assertions, or SUT mocking), and writes to <code>wave-state.json.reviewer_verdicts[]</code>. Catches test-bypass before QA's rerun goes green. Ten personas across two skills — see <a href="https://github.com/socitix/stx-skills/blob/main/AGENTS.md"><code>AGENTS.md</code></a> for the full inventory.<br><br>
-        <em>v1.8 (previous):</em> Agent contracts moved out of <code>SKILL.md</code> into versioned files under <code>.claude/agents/</code>. Loaded by reference at spawn time. Each wave records <code>persona_versions</code> for reproducibility.
+        <strong>New in v1.10:</strong> Help docs are now generated from per-skill <code>catalog.json</code> files via <code>npm run build</code>. Editing card content directly here is overwritten on the next build — change <code>.claude/skills/&lt;name&gt;/catalog.json</code> instead.<br><br>
+        <em>v1.9 (previous):</em> The <code>stx-reviewer</code> persona joins the wave loop between Dev hand-back and QA rerun. Reads the Dev's diff, emits a structured verdict (<code>approved</code>, <code>concerns[]</code>, or one of three instant-halt verdicts for test-file edits, weakened assertions, or SUT mocking), and writes to <code>wave-state.json.reviewer_verdicts[]</code>. Ten personas across two skills — see <a href="https://github.com/socitix/stx-skills/blob/main/AGENTS.md"><code>AGENTS.md</code></a> for the full inventory.
       </div>
 
+<!-- BEGIN AUTO: skill cards — generated from .claude/skills/*/catalog.json by `npm run build` -->
       <details class="skill" id="sk-stx-feature">
         <summary>
           <span class="ico">F</span>
-          <span class="nm">/stx-feature<span class="one">Multi-agent feature wave. Analyst → Architect → QA → Dev with Reviewer gate between Dev and QA (v1.2). Three approval gates, tier-specialized Devs, suspicious-change tracking, reviewer_verdicts[] trail. Personas live in <code>.claude/agents/</code>.</span></span>
+          <span class="nm">/stx-feature<span class="one">Multi-agent feature wave. Analyst → Architect → QA → Dev with Reviewer gate between Dev and QA (v1.4). Three approval gates, tier-specialized Devs, suspicious-change tracking, reviewer_verdicts[] trail. <code>--autonomous</code> mode auto-approves all gates for unattended runs (never commits). Personas live in <code>.claude/agents/</code>.</span></span>
           <span class="type type-main">main-bound</span>
-          <span class="ver">v1.2</span>
+          <span class="ver">v1.4</span>
           <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
         </summary>
         <div class="body">
-          <p>Drives a multi-agent feature wave. Spawns a worktree, runs Analyst → Architect → QA in sequence (each behind a user gate), then dispatches tier-specialized Dev agents under QA control until all tests are green.</p>
+          <p>Drives a multi-agent feature wave. Spawns a worktree, runs Analyst → Architect → QA in sequence (each behind a user gate unless <code>--autonomous</code>), then dispatches tier-specialized Dev agents under QA control until all tests are green.</p>
 
           <div class="blocks">
             <div class="block use"><div class="lbl">Use when</div><ul>
@@ -1547,6 +1548,9 @@
 <span class="c"># Seed initial_request, then interactive</span>
 /stx-feature Implement multi-delete feature for Admins on Dashboard
 
+<span class="c"># Autonomous — auto-approve all 3 gates; never commits</span>
+/stx-feature <span class="o">--autonomous</span> Implement multi-delete feature for Admins on Dashboard
+
 <span class="c"># Resume a halted wave (planned)</span>
 /stx-feature <span class="o">--resume</span> wave-admin-multi-delete-7f3a</pre>
 
@@ -1554,11 +1558,11 @@
           <table class="deftbl">
             <thead><tr><th>File</th><th>Owner</th><th>Purpose</th></tr></thead>
             <tbody>
-              <tr><td class="k">wave-state.json</td><td>Orchestrator</td><td>Canonical state — features, tasks, suspicious[], escalations[]</td></tr>
+              <tr><td class="k">wave-state.json</td><td>Orchestrator</td><td>Canonical state — features, tasks, suspicious[], escalations[], gates[]</td></tr>
               <tr><td class="k">requirement-verse.html</td><td>Analyst</td><td>Gate 1 artifact</td></tr>
               <tr><td class="k">architecture-verse.html</td><td>Architect</td><td>Gate 2 — freezes out-of-scope</td></tr>
               <tr><td class="k">qa-verse.html</td><td>QA</td><td>Gate 3 — dry-run boundary</td></tr>
-              <tr><td class="k">result.html</td><td>Orchestrator</td><td>End-of-wave summary</td></tr>
+              <tr><td class="k">result.html</td><td>Orchestrator</td><td>End-of-wave summary (incl. auto-approved gates)</td></tr>
               <tr><td class="k">handoff.md</td><td>Orchestrator</td><td>Only on halt</td></tr>
             </tbody>
           </table>
@@ -1568,6 +1572,7 @@
             <li><strong>Soft cap 3 / task</strong> — Architect re-engages, may append Revision N to architecture-verse.</li>
             <li><strong>Hard cap 5 / task</strong> — wave halts, handoff.md written.</li>
             <li><strong>Suspicious-changes 3 / task</strong> — auto-halt task (scope-drift, test-file touch, mock-of-SUT, build-break).</li>
+            <li><strong>Autonomous never bypasses</strong> reviewer halt verdicts, iteration caps, destructive ops, or commit/PR steps.</li>
           </ul>
         </div>
       </details>
@@ -1577,7 +1582,7 @@
           <span class="ico">B</span>
           <span class="nm">/stx-fix<span class="one">Two-agent QA → Coder loop for a known bug. Failing test first, smallest change to make it pass. Personas live in <code>.claude/agents/</code>.</span></span>
           <span class="type type-main">main-bound</span>
-          <span class="ver">v1.1</span>
+          <span class="ver">v1.2</span>
           <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
         </summary>
         <div class="body">
@@ -1596,26 +1601,29 @@
             </ul></div>
           </div>
 
-          <h4>Required interview fields</h4>
-          <table class="deftbl">
-            <thead><tr><th>Field</th><th>Type</th><th>Default</th></tr></thead>
-            <tbody>
-              <tr><td class="k">title</td><td class="t">text</td><td>—</td></tr>
-              <tr><td class="k">issues</td><td class="t">numbered list</td><td>—</td></tr>
-              <tr><td class="k">repro</td><td class="t">text</td><td>—</td></tr>
-              <tr><td class="k">expected</td><td class="t">numbered list</td><td>mirrors issues 1:1</td></tr>
-              <tr><td class="k">test_kind</td><td class="t">radio</td><td>playwright (UI) / vitest-unit (logic)</td></tr>
-              <tr><td class="k">iteration_cap</td><td class="t">number</td><td>5</td></tr>
-              <tr><td class="k">commit_policy</td><td class="t">radio</td><td>commit-after-green</td></tr>
-            </tbody>
-          </table>
-
           <h4>Invocations</h4>
           <pre><span class="c"># Interactive</span>
 /stx-fix
 
 <span class="c"># Pre-supply title</span>
-/stx-fix Timer offset wrong after DST</pre>
+/stx-fix Timer offset wrong after DST
+
+<span class="c"># Autonomous — skip acceptance gate; forces no-commit</span>
+/stx-fix <span class="o">--autonomous</span> <span class="o">--from</span> bug.yaml</pre>
+
+          <h4>Required interview fields</h4>
+          <table class="deftbl">
+            <thead><tr><th>Field</th><th>Type</th><th>Default</th></tr></thead>
+            <tbody>
+              <tr><td class="k">title</td><td>text</td><td>—</td></tr>
+              <tr><td class="k">issues</td><td>numbered list</td><td>—</td></tr>
+              <tr><td class="k">repro</td><td>text</td><td>—</td></tr>
+              <tr><td class="k">expected</td><td>numbered list</td><td>mirrors issues 1:1</td></tr>
+              <tr><td class="k">test_kind</td><td>radio</td><td>playwright (UI) / vitest-unit (logic)</td></tr>
+              <tr><td class="k">iteration_cap</td><td>number</td><td>5</td></tr>
+              <tr><td class="k">commit_policy</td><td>radio</td><td>commit-after-green</td></tr>
+            </tbody>
+          </table>
 
           <h4>Halt conditions</h4>
           <ul>
@@ -1623,6 +1631,7 @@
             <li>Coder weakens or skips an assertion</li>
             <li>Iteration cap trips (default 5)</li>
             <li>Lint/build fails for an unrelated reason</li>
+            <li><code>--autonomous</code> does not bypass any halt condition above — it only skips the acceptance gate and forces no-commit.</li>
           </ul>
         </div>
       </details>
@@ -1682,7 +1691,7 @@
           <span class="ico">M</span>
           <span class="nm">/stx-pr-merge<span class="one">Full chain: commit → push → PR → build → squash-merge → refresh main → build → cleanup. Halts on any failure.</span></span>
           <span class="type type-wt">worktree-bound</span>
-          <span class="ver">v1.0</span>
+          <span class="ver">v1.1</span>
           <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
         </summary>
         <div class="body">
@@ -1703,16 +1712,16 @@
           <table class="deftbl">
             <thead><tr><th>#</th><th>Step</th><th>Halts if</th></tr></thead>
             <tbody>
-              <tr><td>1</td><td>Pre-flight (status, branch, remote)</td><td>On main; dirty unrelated; no remote</td></tr>
-              <tr><td>2</td><td>Stage explicit files</td><td>Files don't match described</td></tr>
-              <tr><td>3</td><td>Commit (Conventional + co-author)</td><td>Empty message</td></tr>
-              <tr><td>4</td><td><code>git push -u</code></td><td>Rejected / protected / auth</td></tr>
-              <tr><td>5</td><td><code>gh pr create</code></td><td>gh unavailable</td></tr>
-              <tr><td>6</td><td>Build #1 (feature worktree)</td><td>Non-zero exit</td></tr>
-              <tr><td>7</td><td><code>gh pr merge --squash</code></td><td>Conflicts / checks</td></tr>
-              <tr><td>8</td><td>Refresh main <code>--ff-only</code></td><td>Non-fast-forward</td></tr>
-              <tr><td>9</td><td>Build #2 (main, post-merge)</td><td>Non-zero exit</td></tr>
-              <tr><td>10</td><td>Remove worktree + branch</td><td>Cleanup failure</td></tr>
+              <tr><td class="k">1</td><td>Pre-flight (status, branch, remote)</td><td>On main; dirty unrelated; no remote</td></tr>
+              <tr><td class="k">2</td><td>Stage explicit files</td><td>Files don't match described</td></tr>
+              <tr><td class="k">3</td><td>Commit (Conventional + co-author)</td><td>Empty message</td></tr>
+              <tr><td class="k">4</td><td><code>git push -u</code></td><td>Rejected / protected / auth</td></tr>
+              <tr><td class="k">5</td><td><code>gh pr create</code></td><td>gh unavailable</td></tr>
+              <tr><td class="k">6</td><td>Build #1 (feature worktree)</td><td>Non-zero exit</td></tr>
+              <tr><td class="k">7</td><td><code>gh pr merge --squash</code></td><td>Conflicts / checks</td></tr>
+              <tr><td class="k">8</td><td>Refresh main <code>--ff-only</code></td><td>Non-fast-forward</td></tr>
+              <tr><td class="k">9</td><td>Build #2 (main, post-merge)</td><td>Non-zero exit</td></tr>
+              <tr><td class="k">10</td><td>Remove worktree + branch</td><td>Cleanup failure</td></tr>
             </tbody>
           </table>
 
@@ -1793,17 +1802,6 @@
             </ul></div>
           </div>
 
-          <h4>Thresholds</h4>
-          <table class="deftbl">
-            <thead><tr><th>Threshold</th><th>Default</th><th>Why</th></tr></thead>
-            <tbody>
-              <tr><td>File size</td><td class="k">500 KB</td><td>Claude Vision resizes large images; bytes beyond this are wasted</td></tr>
-              <tr><td>Longest edge</td><td class="k">1568 px</td><td>Matches Claude's internal pre-processing cap</td></tr>
-              <tr><td>Logo/icon target</td><td class="k">512 px</td><td>Always rendered small</td></tr>
-              <tr><td>SVG flagged at</td><td class="k">100 KB</td><td>Usually embedded rasters — recommend SVGO</td></tr>
-            </tbody>
-          </table>
-
           <h4>Invocations</h4>
           <pre><span class="c"># Analyze only</span>
 /stx-image
@@ -1816,6 +1814,17 @@
 
 <span class="c"># Also delete unused</span>
 /stx-image <span class="o">--apply --delete-unused</span></pre>
+
+          <h4>Thresholds</h4>
+          <table class="deftbl">
+            <thead><tr><th>Threshold</th><th>Default</th><th>Why</th></tr></thead>
+            <tbody>
+              <tr><td class="k">File size</td><td>500 KB</td><td>Claude Vision resizes large images; bytes beyond this are wasted</td></tr>
+              <tr><td class="k">Longest edge</td><td>1568 px</td><td>Matches Claude's internal pre-processing cap</td></tr>
+              <tr><td class="k">Logo/icon target</td><td>512 px</td><td>Always rendered small</td></tr>
+              <tr><td class="k">SVG flagged at</td><td>100 KB</td><td>Usually embedded rasters — recommend SVGO</td></tr>
+            </tbody>
+          </table>
         </div>
       </details>
 
@@ -1843,6 +1852,16 @@
             </ul></div>
           </div>
 
+          <h4>Invocations</h4>
+          <pre><span class="c"># Fully interactive — assistant runs the interview</span>
+/stx-magazine-report
+
+<span class="c"># Pre-supply the style and locale</span>
+/stx-magazine-report <span class="o">--style</span> 2 <span class="o">--locale</span> <span class="s">"Kolkata, India"</span>
+
+<span class="c"># Explicit source + output</span>
+/stx-magazine-report <span class="o">--source</span> ./inputs/q3-portfolio.pdf <span class="o">--output</span> ./reports/q3-portfolio.html</pre>
+
           <h4>Four palettes</h4>
           <table class="deftbl">
             <thead><tr><th>Style</th><th>Register</th><th>Best for</th></tr></thead>
@@ -1854,16 +1873,7 @@
             </tbody>
           </table>
 
-          <h4>Invocations</h4>
-          <pre><span class="c"># Fully interactive — assistant runs the interview</span>
-/stx-magazine-report
-
-<span class="c"># Pre-supply the style and locale</span>
-/stx-magazine-report <span class="o">--style</span> 2 <span class="o">--locale</span> <span class="s">"Kolkata, India"</span>
-
-<span class="c"># Explicit source + output</span>
-/stx-magazine-report <span class="o">--source</span> ./inputs/q3-portfolio.pdf <span class="o">--output</span> ./reports/q3-portfolio.html</pre>
-
+          <h4>Output</h4>
           <p>Writes a self-contained <code>.html</code> file under the working folder (or topic-named subfolder). Returns the path + a 3-line summary in chat. Never commits.</p>
         </div>
       </details>
@@ -1879,9 +1889,10 @@
         <div class="body">
           <p>Quick reference, in-terminal. Prints every skill name with a one-liner, grouped by type. Use this when you don't want to leave the terminal.</p>
 
-          <h4>Invocation</h4>
+          <h4>Invocations</h4>
           <pre>/stx-help</pre>
 
+          <h4>Note</h4>
           <p>No options. Output ends with a one-line pointer to <code>/stx-help-html</code> for the visual walkthrough.</p>
         </div>
       </details>
@@ -1897,14 +1908,16 @@
         <div class="body">
           <p>Thin shell-out. Runs <code>open .claude/skills/stx-help-html/help.html</code> (or the Cursor copy at <code>.cursor/skills/stx-help-html/help.html</code> when installed with <code>--cursor</code>). The HTML you're reading right now is that file — shipped with the skill, refreshed on every installer run.</p>
 
-          <h4>Invocation</h4>
+          <h4>Invocations</h4>
           <pre>/stx-help-html</pre>
 
           <h4>Location</h4>
           <p><code>&lt;project&gt;/.claude/skills/stx-help-html/help.html</code> · Cursor: <code>.cursor/skills/stx-help-html/help.html</code></p>
         </div>
       </details>
+<!-- END AUTO -->
 
+      <!-- Planned-skill card below has no .claude/skills/<name>/ folder yet, so no catalog.json drives it. Hand-maintained until the skill is actually shipped. -->
       <details class="skill" id="sk-stx-skill-settings">
         <summary>
           <span class="ico">S</span>

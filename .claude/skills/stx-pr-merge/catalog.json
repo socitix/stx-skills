@@ -1,0 +1,50 @@
+{
+  "$schema": "../catalog.schema.json",
+  "name": "stx-pr-merge",
+  "slash": "/stx-pr-merge",
+  "version": "1.1.0",
+  "zone": "worktree",
+  "icon": "M",
+  "terminal": {
+    "group": "WORKTREE-BOUND",
+    "lines": [
+      "Commit → PR → build → squash-merge → cleanup chain"
+    ]
+  },
+  "card": {
+    "summary": "Full chain: commit → push → PR → build → squash-merge → refresh main → build → cleanup. Halts on any failure.",
+    "paragraph": "The complete close-out for a feature worktree. Two build gates around the merge. Designed to be approved as one chain rather than step-by-step.",
+    "use_when": [
+      "Feature branch finished, want one chain to merge &amp; clean up",
+      "You want hard build-validation around the merge"
+    ],
+    "dontuse_when": [
+      "Only commit + push needed → <code>/stx-checkin</code>",
+      "You're on main (skill is worktree-bound)"
+    ],
+    "extras": [
+      {
+        "kind": "table",
+        "title": "The chain",
+        "headers": ["#", "Step", "Halts if"],
+        "rows": [
+          ["1", "Pre-flight (status, branch, remote)", "On main; dirty unrelated; no remote"],
+          ["2", "Stage explicit files", "Files don't match described"],
+          ["3", "Commit (Conventional + co-author)", "Empty message"],
+          ["4", "<code>git push -u</code>", "Rejected / protected / auth"],
+          ["5", "<code>gh pr create</code>", "gh unavailable"],
+          ["6", "Build #1 (feature worktree)", "Non-zero exit"],
+          ["7", "<code>gh pr merge --squash</code>", "Conflicts / checks"],
+          ["8", "Refresh main <code>--ff-only</code>", "Non-fast-forward"],
+          ["9", "Build #2 (main, post-merge)", "Non-zero exit"],
+          ["10", "Remove worktree + branch", "Cleanup failure"]
+        ]
+      },
+      {
+        "kind": "paragraph",
+        "title": "Single chained approval",
+        "html": "One sentence covers every named step: \"Commit these, push, open a PR, squash-merge, refresh main, clean up the worktree.\" Failures still halt; unexpected files still need a fresh approval."
+      }
+    ]
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "../catalog.schema.json",
+  "name": "stx-worktree-report",
+  "slash": "/stx-worktree-report",
+  "version": "1.0.0",
+  "zone": "worktree",
+  "icon": "R",
+  "terminal": {
+    "group": "WORKTREE-BOUND",
+    "lines": [
+      "Generate HTML report of worktree changes"
+    ]
+  },
+  "card": {
+    "summary": "Single-file HTML report of worktree changes. Exec summary, approach table, Mermaid diagrams, per-file diffs, test results.",
+    "paragraph": "Self-contained <code>*.html</code> under <code>docs/</code> documenting a worktree's changes. Same shape every time: stats, status pills, approach trade-off table, two Mermaid diagrams, per-file diffs, test output, deferred caveats.",
+    "use_when": [
+      "Worktree finished, want a shareable artifact",
+      "Capture <em>why</em>, not just <em>what</em>",
+      "Preserve audit trail before discarding a halted worktree"
+    ],
+    "dontuse_when": [
+      "One-line fix — <code>git log</code> is enough",
+      "Diff incomplete (re-run when done)"
+    ],
+    "invocations": [
+      { "comment": "Infer from cwd", "cmd": "/stx-worktree-report" },
+      { "comment": "Explicit worktree", "cmd": "/stx-worktree-report <o>--worktree</o> .claude/worktrees/wave-admin-multi-delete" },
+      { "comment": "Override defaults", "cmd": "/stx-worktree-report <o>--base</o> develop <o>--title</o> <s>\"Replacing the PNG download\"</s>" }
+    ],
+    "extras": [
+      {
+        "kind": "ordered",
+        "title": "Sections (always the same shape)",
+        "items": [
+          "Executive summary (2–4 sentences)",
+          "Stat cards (files, ± lines, deps, test status)",
+          "Status pills (build / lint / tests / commit)",
+          "Approach table with rejected options + reasons",
+          "Key insight callout (optional)",
+          "Two Mermaid diagrams (flowchart + sequence)",
+          "Files table + per-file detail with informative hunks",
+          "Test results (trimmed runner output)",
+          "Deferred caveats",
+          "Out of scope"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "../catalog.schema.json",
+  "name": "stx-help-html",
+  "slash": "/stx-help-html",
+  "version": "1.0.0",
+  "zone": "any",
+  "icon": "D",
+  "terminal": {
+    "group": "ANY-BOUND",
+    "lines": [
+      "Full walkthrough doc with diagrams (recommended)"
+    ]
+  },
+  "card": {
+    "summary": "Open this walkthrough doc in your default browser. Visual: diagrams, expandable catalog, examples.",
+    "paragraph": "Thin shell-out. Runs <code>open .claude/skills/stx-help-html/help.html</code> (or the Cursor copy at <code>.cursor/skills/stx-help-html/help.html</code> when installed with <code>--cursor</code>). The HTML you're reading right now is that file — shipped with the skill, refreshed on every installer run.",
+    "invocations": [
+      { "cmd": "/stx-help-html" }
+    ],
+    "extras": [
+      {
+        "kind": "paragraph",
+        "title": "Location",
+        "html": "<code>&lt;project&gt;/.claude/skills/stx-help-html/help.html</code> · Cursor: <code>.cursor/skills/stx-help-html/help.html</code>"
+      }
+    ]
+  }
+}

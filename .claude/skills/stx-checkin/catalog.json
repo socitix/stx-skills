@@ -1,0 +1,47 @@
+{
+  "$schema": "../catalog.schema.json",
+  "name": "stx-checkin",
+  "slash": "/stx-checkin",
+  "version": "1.0.0",
+  "zone": "any",
+  "icon": "C",
+  "terminal": {
+    "group": "ANY-BOUND",
+    "lines": [
+      "Secure commit + push with security scan"
+    ]
+  },
+  "card": {
+    "summary": "Commit + push with security scan. Blocks secrets, warns on noise, offers PR on feature branches.",
+    "paragraph": "A guarded git commit workflow. Scans for secrets, warns on noise, stages, commits with Claude co-authorship, pushes, optionally opens a PR.",
+    "use_when": [
+      "Quick commit + push with security guards on",
+      "Unsure if there's a secret in the staging area",
+      "Want PR auto-offered on feature branches"
+    ],
+    "dontuse_when": [
+      "You want the full merge chain → <code>/stx-pr-merge</code>",
+      "Just need <code>git push</code> after a manual commit"
+    ],
+    "invocations": [
+      { "comment": "Interactive", "cmd": "/stx-checkin" },
+      { "comment": "With message", "cmd": "/stx-checkin <o>-m</o> <s>\"feat: add login\"</s>" },
+      { "comment": "Preview", "cmd": "/stx-checkin <o>--dry-run</o>" },
+      { "comment": "Commit only", "cmd": "/stx-checkin <o>--skip-push</o>" }
+    ],
+    "extras": [
+      {
+        "kind": "table",
+        "title": "Security scan",
+        "headers": ["Pattern", "Action"],
+        "rows": [
+          [".env, .env.*", "<span class=\"type\" style=\"background:#f7e3df;color:#b13d2c;\">BLOCKED</span> secrets"],
+          ["*.pem, *.key, id_rsa", "<span class=\"type\" style=\"background:#f7e3df;color:#b13d2c;\">BLOCKED</span> private keys"],
+          ["credentials.json, *adminsdk*.json", "<span class=\"type\" style=\"background:#f7e3df;color:#b13d2c;\">BLOCKED</span> service creds"],
+          [".DS_Store, *.log, node_modules/", "<span class=\"type type-any\">WARNED</span> can proceed"],
+          ["files &gt; 10 MB", "<span class=\"type\" style=\"background:#fcf2dc;color:#b8893a;\">FLAGGED</span> suggest Git LFS"]
+        ]
+      }
+    ]
+  }
+}

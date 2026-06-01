@@ -1,0 +1,51 @@
+{
+  "$schema": "../catalog.schema.json",
+  "name": "stx-magazine-report",
+  "slash": "/stx-magazine-report",
+  "version": "1.0.0",
+  "zone": "any",
+  "icon": "M",
+  "terminal": {
+    "group": "ANY-BOUND",
+    "lines": [
+      "Magazine-style HTML report from any source (4 palettes)"
+    ]
+  },
+  "card": {
+    "summary": "Magazine-style single-file HTML deliverable from any analytical source. Cover, chapters, severity meters, click-to-expand detail library, four editorial palettes.",
+    "paragraph": "Content-agnostic generator. Turn any analytical brief — a blood panel, a GTM deck, a 10-K, an interview corpus, a renovation plan — into a printed-magazine-quality HTML file. Cover, TL;DR scorecard, finding cards with severity meters, targets table, action cards with pill badges, click-to-expand detail library, donut/bar charts, and a closing prediction band. Print-friendly, mobile responsive, self-contained.",
+    "use_when": [
+      "Deliverable needs editorial polish, not a bulleted summary",
+      "Non-specialist reader must understand a domain deeply",
+      "You want a shareable, printable, point-in-time artifact"
+    ],
+    "dontuse_when": [
+      "Short answers, code review notes, or one-page summaries (markdown is enough)",
+      "Operational dashboards that update daily",
+      "You want a worktree change-log artifact → <code>/stx-worktree-report</code>"
+    ],
+    "invocations": [
+      { "comment": "Fully interactive — assistant runs the interview", "cmd": "/stx-magazine-report" },
+      { "comment": "Pre-supply the style and locale", "cmd": "/stx-magazine-report <o>--style</o> 2 <o>--locale</o> <s>\"Kolkata, India\"</s>" },
+      { "comment": "Explicit source + output", "cmd": "/stx-magazine-report <o>--source</o> ./inputs/q3-portfolio.pdf <o>--output</o> ./reports/q3-portfolio.html" }
+    ],
+    "extras": [
+      {
+        "kind": "table",
+        "title": "Four palettes",
+        "headers": ["Style", "Register", "Best for"],
+        "rows": [
+          ["#1 Navy Blue", "McKinsey-meets-Monocle", "GTM plans, board reports, investment memos, audits"],
+          ["#2 Veew Teal", "Warmer handbook", "Playbooks, onboarding, walkthroughs, customer-facing"],
+          ["#3 Crimson Magazine", "Vogue / Cereal / Kinfolk", "Health, wellness, travel, food"],
+          ["#4 Surprise me", "Claude picks", "Anything that doesn't fit the others"]
+        ]
+      },
+      {
+        "kind": "paragraph",
+        "title": "Output",
+        "html": "Writes a self-contained <code>.html</code> file under the working folder (or topic-named subfolder). Returns the path + a 3-line summary in chat. Never commits."
+      }
+    ]
+  }
+}
