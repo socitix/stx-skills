@@ -114,12 +114,22 @@ FORM_FIELDS:
     default: commit-after-green
     help: no-commit = leave changes uncommitted. commit-after-green = commit once all tests pass; user opens PR. commit-and-pr = commit + push + open PR after green (still requires user-issued instruction; this just declares intent up front).
 
+  - name: autonomous
+    type: checkbox
+    label: Autonomous mode
+    default: false
+    help: Set automatically by /stx-fix when invoked with --autonomous. When true, the orchestrator skipped the optional-field interview, skipped the Step 5 acceptance gate, and forced commit_policy to no-commit. The renderer surfaces this in the rendered prompt so the loop knows it's running unattended.
+
 ================================================================================
   TEMPLATE BODY (everything below is what the agent receives)
 ================================================================================
 -->
 
 # Fix issues with multi-agent loop: {{title}}
+
+{{#if autonomous == true}}
+> **Autonomous mode.** This loop was started with `/stx-fix --autonomous`. The acceptance gate was auto-approved; no user interaction is expected between QA writing the failing test(s) and the loop reaching green or a halt condition. Destructive operations, test-file edits, weakened assertions, mocked SUT, out-of-scope edits, iteration caps, and commit/push/PR steps still STOP the loop and surface to the user — those are not bypassed. `commit_policy` is forced to `no-commit`; §8 below will not run a commit even if all tests pass.
+{{/if}}
 
 {{#if worktree_action == "create-new"}}
 ## 0. Setup

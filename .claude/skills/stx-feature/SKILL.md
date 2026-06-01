@@ -1,7 +1,7 @@
 ---
 name: stx-feature
-description: Drives a multi-agent feature implementation wave. Interviews the user, runs Analyst → Architect → QA in sequence (each behind a gate), then schedules tier-specialized Dev agents under a Reviewer + QA control loop. Produces requirement-verse.html, architecture-verse.html, qa-verse.html, and result.html artifacts in docs/waves/, plus a cross-wave wave-wiki.html index. Use when a new feature (multi-task, possibly multi-tier) needs to be implemented, not a single bug fix.
-version: 1.3.0
+description: Drives a multi-agent feature implementation wave. Interviews the user, runs Analyst → Architect → QA in sequence (each behind a gate), then schedules tier-specialized Dev agents under a Reviewer + QA control loop. Produces requirement-verse.html, architecture-verse.html, qa-verse.html, and result.html artifacts in docs/waves/, plus a cross-wave wave-wiki.html index. Use when a new feature (multi-task, possibly multi-tier) needs to be implemented, not a single bug fix. Supports --autonomous to auto-approve all interactive gates (still halts on destructive ops, commits, and pushes).
+version: 1.4.0
 author: STX
 ---
 
@@ -49,6 +49,46 @@ This skill operates under the user's CRITICAL governance rules from `~/.claude/C
 3. **Data Protection.** No destructive operation (no test deletion, no force-pushes, no branch removal) without an explicit named approval. This is especially important when the *feature itself* is destructive (e.g. multi-delete) — Dev agents MUST add environment guards and never run delete-style tests against production data.
 4. **QA / Dev separation (per user's auto-memory `feedback_qa_fixer_workflow.md`).** Dev agents MUST NOT edit the QA agent's test files. Touching a test file is a halt-the-loop offense.
 
+### Autonomous mode (`--autonomous`)
+
+When the user invokes the skill with `--autonomous`, the orchestrator treats every **non-destructive interactive gate** as pre-approved and proceeds without pausing. This is the only behavior change — the agents, artifacts, scope rules, iteration caps, and halt conditions are all identical.
+
+**What `--autonomous` auto-approves:**
+
+- Step 0 worktree confirmation when already on a non-`main` branch.
+- Step 0 worktree creation when on `main` — the orchestrator picks a slug from `initial_request` and proceeds (no `AskUserQuestion`).
+- The Analyst's interview round (Step 2) — the Analyst is told `autonomous: true` and decomposes `initial_request` using best judgment instead of interviewing.
+- The Architect's interview round (Step 3) — Architect is told `autonomous: true` and proceeds on the approved `requirement-verse.html` without further questions.
+- **Gate 1** (`requirement-verse.html`), **Gate 2** (`architecture-verse.html`), **Gate 3** (`qa-verse.html`) — auto-approved; each gate is still logged into `wave-state.json.gates[]` with `auto_approved: true` and a UTC timestamp.
+- The "stop at dry-run vs continue past dry-run" question — defaults to **continue past dry-run**.
+- The "concurrency cap" question — defaults to **3** (unless overridden via `--concurrency=N`).
+
+**What `--autonomous` NEVER bypasses (must still STOP and ask):**
+
+- Creating a commit, push, PR, or merge. The wave finishes with uncommitted changes and `result.html`; the user runs `/stx-checkin` or `/stx-pr-merge` manually. This matches the global "Autonomous agent special rules" — no commits/deploys while unattended.
+- Worktree removal, branch deletion, `git push --force`.
+- Any destructive database operation (`DELETE`, `DROP`, `TRUNCATE`, `UPDATE` without `WHERE`).
+- File deletion outside the wave's `scope_paths`, or any deletion of user-authored content not produced by this wave.
+- All reviewer halt verdicts (`test-file-edit-detected`, `assertion-weakened`, `sut-mocked`) — these still halt the loop and surface to the user; autonomous mode does **not** auto-resume past them.
+- Iteration caps (soft 3, hard 5) and suspicious-changes ceiling (3) still trip and still write `handoff.md`.
+
+**What `--autonomous` fails on (cannot fabricate):**
+
+- Missing `initial_request`. If the user invokes `/stx-feature --autonomous` with no feature description and no argument, the skill halts with: *"`--autonomous` requires an initial feature description as the argument."* — it does not silently start an Analyst with no seed.
+
+**Audit trail.** Every auto-approved gate writes a row to `wave-state.json.gates[]`:
+
+```json
+{
+  "gate": "requirement_verse",
+  "auto_approved": true,
+  "approved_at": "2026-05-30T14:21:09Z",
+  "reason": "autonomous mode"
+}
+```
+
+`result.html` renders this list at the top of the report so the user can see which gates were skipped.
+
 ## Concepts
 
 - **Wave** — a single invocation of `/stx-feature`. One wave produces one worktree, one branch, one PR, and a directory `docs/waves/wave-{slug}-{4-char-random}/`.
@@ -86,8 +126,8 @@ git rev-parse --abbrev-ref HEAD
 git worktree list --porcelain
 ```
 
-- **On a feature branch in a non-main worktree:** confirm one-line ("We're on `<branch>` at `<path>` — work here?"). If yes, continue.
-- **On `main` / `master`:** STOP. Use `AskUserQuestion` to propose a worktree name derived from the user's initial feature description. Do NOT proceed until a worktree exists.
+- **On a feature branch in a non-main worktree:** confirm one-line ("We're on `<branch>` at `<path>` — work here?"). If yes, continue. **`--autonomous`:** skip the confirmation; just print one line and continue.
+- **On `main` / `master`:** STOP. Use `AskUserQuestion` to propose a worktree name derived from the user's initial feature description. Do NOT proceed until a worktree exists. **`--autonomous`:** derive the slug from `initial_request` (kebab-case, ≤30 chars, alphanum + `-`), create `.claude/worktrees/wave-<slug>` on branch `feat/wave-<slug>`, print one line, continue. Do NOT call `AskUserQuestion`.
 
 Worktree command pattern:
 
@@ -128,6 +168,8 @@ The user MAY invoke the skill with a feature description, e.g.:
 
 If so, take the argument as `initial_request`. Otherwise, ask the user one open question: *"In a few sentences, describe the feature you want implemented."* The result populates `initial_request` in `wave-state.json`.
 
+**`--autonomous`:** the argument is required. If the user invoked `/stx-feature --autonomous` with no description, **halt** with the message: *"`--autonomous` requires an initial feature description as the argument."* Do NOT ask the open question and do NOT proceed with a synthetic seed.
+
 This is the **seed** for everything downstream. Subsequent agents add clarity; they do not replace it.
 
 Also at this step: record the persona versions that will drive the wave. Read the YAML frontmatter of every persona file under `.claude/agents/` and write a `persona_versions` block to `wave-state.json`. Also write `worktree_path`, `branch`, and `main_worktree_path` from Step 0.5:
@@ -156,7 +198,11 @@ This locks the wave to a specific persona snapshot — essential for future cros
 
 The Analyst follows the contract in its persona file. Do not embed contract logic here.
 
+In **`--autonomous`** mode, also append: `autonomous: true. Do NOT interview the user; decompose the initial_request using your best judgment and render requirement-verse.html.`
+
 ★ **Gate 1: user approves `requirement-verse.html`.** Use `AskUserQuestion` with three options: *Approve*, *Edit a feature*, *Cancel wave*. Do not proceed without explicit approval.
+
+**`--autonomous`:** skip the `AskUserQuestion` call. Treat the gate as approved. Append a row to `wave-state.json.gates[]` with `gate: "requirement_verse"`, `auto_approved: true`, `approved_at: <utc>`, `reason: "autonomous mode"`. Print one line: *"Gate 1 auto-approved (autonomous)."*
 
 ### Step 3 — Architect (Agent 2)
 
@@ -166,7 +212,11 @@ The Analyst follows the contract in its persona file. Do not embed contract logi
 
 The Architect follows the contract in its persona file.
 
+In **`--autonomous`** mode, also append: `autonomous: true. Do NOT interview the user; resolve any implementation gaps using best judgment and document each assumption inline in architecture-verse.html under "Autonomous assumptions" per Feature.`
+
 ★ **Gate 2: user approves `architecture-verse.html`.** Scope is now FROZEN — anything not listed in tasks or marked in scope_paths is off-limits for the wave.
+
+**`--autonomous`:** skip the `AskUserQuestion` call. Treat the gate as approved. Append a row to `wave-state.json.gates[]` with `gate: "architecture_verse"`, `auto_approved: true`, `approved_at: <utc>`, `reason: "autonomous mode"`. Scope is still frozen. Print one line: *"Gate 2 auto-approved (autonomous). Scope frozen."*
 
 ### Step 4 — QA Agent (Agent 3)
 
@@ -179,6 +229,8 @@ The QA agent follows the **authoring contract** section of its persona file.
 ★ **Gate 3 (Dry-run boundary): user approves `qa-verse.html` AND the failing tests.** This is the most expensive gate to fail past — failing tests that encode the wrong acceptance criteria poison the rest of the wave.
 
 By default, the skill **stops here** unless the user explicitly chose to continue past dry-run in the interview.
+
+**`--autonomous`:** skip the `AskUserQuestion` call. Treat the gate as approved AND treat "continue past dry-run" as the chosen path. Append a row to `wave-state.json.gates[]` with `gate: "qa_verse"`, `auto_approved: true`, `approved_at: <utc>`, `reason: "autonomous mode"`. Print one line: *"Gate 3 auto-approved (autonomous). Proceeding to Dev wave."* The other halt conditions in Step 6 (reviewer halt verdicts, iteration caps, suspicious-changes ceiling) are NOT bypassed — they still surface to the user.
 
 ### Step 5 — Dev wave (Agents 4..n)
 
@@ -263,7 +315,7 @@ Final orchestrator step:
    - Set each row's link to `./{{wave_id}}/result.html` when that file exists, else `./{{wave_id}}/`.
    - Sort rows by `started_at` descending (newest first) and render **all** waves, regardless of status, with a status badge.
    - This is a full regenerate, not an append — overwrite the file each time so it stays consistent with the wave directories on disk.
-4. Surface to user with a one-paragraph summary and next-action prompt (commit? PR?).
+4. Surface to user with a one-paragraph summary and next-action prompt (commit? PR?). **`--autonomous`:** the summary still surfaces, but the orchestrator does NOT run a commit/push/PR even if all tasks are green. State explicitly: *"Wave complete. Changes are uncommitted on `<branch>`. Run `/stx-checkin` or `/stx-pr-merge` to ship."* This matches the global autonomous-agent rule: never commit/deploy unattended.
 
 ## Iteration caps (summary)
 
@@ -295,8 +347,12 @@ The skill stops and surfaces — never silently continues — when:
 ```
 /stx-feature                                    # Fully interactive
 /stx-feature <one-line feature description>     # Seed initial_request, then interactive
+/stx-feature --autonomous <feature description> # Auto-approve all 3 gates + worktree + Analyst/Architect interviews; halt only on destructive ops, commit/PR, reviewer halts, and iteration caps
+/stx-feature --autonomous --concurrency=N <…>   # Override the default Dev concurrency cap (default 3)
 /stx-feature --resume <wave-id>                 # (planned) Re-read wave-state.json, cd to worktree_path, re-run Step 0.5 verify, continue from saved status
 ```
+
+`--autonomous` requires a feature description (positional argument or after the flag). Invoking `/stx-feature --autonomous` with no description halts immediately — the skill never fabricates `initial_request`. See **Autonomous mode** under Governance for the full list of what is and isn't bypassed.
 
 This skill does not have a CLI binary — it is purely conversational and runs inside the assistant. The skill writes to disk: `docs/waves/wave-<slug>-<xxxx>/` in the consuming project.
 

@@ -39,7 +39,9 @@ STX Skills · v1.10.0
 
 MAIN-BOUND       run on main, before any worktree exists
   /stx-feature        Multi-agent wave (Analyst → Architect → QA → Dev ↔ Reviewer)
+                      Add --autonomous to auto-approve gates (never commits)
   /stx-fix            Two-agent QA → Coder loop for a known bug
+                      Add --autonomous to skip the acceptance gate (never commits)
   /stx-skill-settings View/edit project settings (planned)
 
 WORKTREE-BOUND   run inside a feature worktree
