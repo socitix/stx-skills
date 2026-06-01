@@ -1,10 +1,10 @@
 # stx-skills
 
-Organization-wide [Claude Code](https://docs.claude.com/en/docs/claude-code) and [Cursor](https://cursor.com) skills collection — nine slash-commands and ten versioned agent personas that drive feature waves, bug fixes, commits, PR merges, documentation, and magazine-quality reports, all built around the worktree model. Install into any project without publishing to npm.
+Organization-wide [Claude Code](https://docs.claude.com/en/docs/claude-code) and [Cursor](https://cursor.com) skills collection — ten slash-commands and ten versioned agent personas that drive feature waves, bug fixes, commits, version bumps, PR merges, documentation, and magazine-quality reports, all built around the worktree model. Install into any project without publishing to npm.
 
 📖 **[Open the walkthrough →](https://socitix.github.io/stx-skills/)** — full doc with diagrams, expandable skill catalog, settings reference.
 
-Current release: **v1.10.0** · MIT licensed.
+Current release: **v1.10.1** · MIT licensed.
 
 ---
 
@@ -125,7 +125,7 @@ Every skill is one of three types based on where you run it:
 |---|---|---|
 | **main-bound** | You're on `main` and want to start something (skill spawns a worktree) | `/stx-feature`, `/stx-fix` |
 | **worktree-bound** | You're in a feature worktree (skill operates on it) | `/stx-pr-merge`, `/stx-worktree-report` |
-| **any-bound** | Runs anywhere — utilities | `/stx-checkin`, `/stx-image`, `/stx-magazine-report`, `/stx-help`, `/stx-help-html` |
+| **any-bound** | Runs anywhere — utilities | `/stx-checkin`, `/stx-version-bump`, `/stx-image`, `/stx-magazine-report`, `/stx-help`, `/stx-help-html` |
 
 ### `/stx-feature` — multi-agent feature wave  *(main-bound)*
 
@@ -163,20 +163,42 @@ Pre-commit security scan, deleted-file confirmation, branch-aware push/PR. Block
 
 See [.claude/skills/stx-checkin/SKILL.md](.claude/skills/stx-checkin/SKILL.md).
 
-### `/stx-pr-merge` — commit → PR → merge → cleanup chain  *(worktree-bound)*
+### `/stx-pr-merge` — commit → version bump → PR → merge → tag → cleanup chain  *(worktree-bound)*
 
-Ten-step chain with build-validation gates around the merge. Halts on any failure for user review. Falls back to `gh api -X DELETE …git/refs/heads/<branch>` when local-checkout blocks branch deletion.
+Twelve-step chain with build-validation gates around the merge **and** an integrated SemVer bump + tag. Halts on any failure for user review. Falls back to `gh api -X DELETE …git/refs/heads/<branch>` when local-checkout blocks branch deletion.
 
 ```bash
-/stx-pr-merge                                    # Run with chained approval
+/stx-pr-merge                                    # Run with chained approval (auto-bump)
 /stx-pr-merge --interactive                      # Prompt at each gate
 /stx-pr-merge --dry-run                          # Print every command without executing
 /stx-pr-merge --pr-title "fix: timer offset"     # Pre-supply the PR title
+/stx-pr-merge --bump minor                       # Force a minor bump (else auto)
+/stx-pr-merge --no-bump                          # Skip version bump entirely
+/stx-pr-merge --no-tag                           # Bump but don't push the vX.Y.Z tag
 ```
 
-Pre-flight → commit → push & PR → **build #1** → squash-merge → refresh main → **build #2** → worktree cleanup → branch delete.
+Pre-flight → commit → **version bump** (separate `chore(release):` commit) → push & PR → **build #1** → squash-merge → refresh main → **tag `vX.Y.Z` & push tag** → **build #2** → worktree cleanup → branch delete.
+
+**Conservative bump default.** `feat:`/`fix:`/`perf:` → `patch`. `feat!:` or `BREAKING CHANGE:` in body → `major`. Anything else → no bump. `minor`/`major` are never inferred — pass `--bump minor` / `--bump major` to force, or use [`/stx-version-bump`](.claude/skills/stx-version-bump/SKILL.md).
 
 See [.claude/skills/stx-pr-merge/SKILL.md](.claude/skills/stx-pr-merge/SKILL.md).
+
+### `/stx-version-bump` — standalone SemVer bump + release commit + local tag  *(any-bound)*
+
+The bump step from `/stx-pr-merge` extracted as a thin standalone skill. Bumps `package.json` (or `--version-file`), creates a separate `chore(release): bump version to X.Y.Z` commit, and tags locally as `vX.Y.Z`. **Does not push.** Use when you forgot to bump in the last shipped PR, want to override the auto-inference, or are aggregating several feature PRs into a single release commit (the `findependence` `chore(release): bump version to 1.4.0 (#97)` pattern).
+
+```bash
+/stx-version-bump                          # auto-infer from HEAD commit subject
+/stx-version-bump minor                    # explicit (positional)
+/stx-version-bump major --no-tag           # bump but defer tagging
+/stx-version-bump --from-commit HEAD~3     # infer from a different commit
+/stx-version-bump --version-file VERSION   # non-Node repo
+/stx-version-bump --dry-run                # preview only
+```
+
+Same conservative auto-policy as `/stx-pr-merge`. Working tree must be clean before invoking (so the release commit contains only the bump). Push when you ship — `/stx-pr-merge` does that automatically, or run `git push --follow-tags` by hand.
+
+See [.claude/skills/stx-version-bump/SKILL.md](.claude/skills/stx-version-bump/SKILL.md).
 
 ### `/stx-worktree-report` — single-file worktree HTML report  *(worktree-bound)*
 
@@ -302,21 +324,25 @@ The installer auto-discovers every directory under `.claude/skills/` — no regi
 
 ```
 stx-skills/
-├── package.json                              # bin: stx-skills + 4 skill binaries
+├── package.json                              # bin: stx-skills + 5 skill binaries + generate-help
 ├── tsconfig.json
 ├── src/
 │   ├── cli/
 │   │   ├── install.ts                        # npx stx-skills entry point
-│   │   └── cursor-transform.ts               # --cursor install-time transforms
+│   │   ├── cursor-transform.ts               # --cursor install-time transforms
+│   │   └── generate-help.ts                  # rebuilds help docs from catalog.json
+│   ├── lib/
+│   │   └── version-bump.ts                   # shared SemVer + Conventional-Commits policy
 │   └── skills/
 │       ├── stx-checkin.ts
 │       ├── stx-pr-merge.ts
+│       ├── stx-version-bump.ts
 │       ├── stx-image.ts
 │       └── stx-worktree-report.ts
 ├── dist/                                     # gitignored — compiled output
-├── docs/
-│   └── index.html                            # GitHub Pages — synced from help.html
+├── index.html                                # GitHub Pages root — generated from help.html
 ├── AGENTS.md                                 # persona inventory (v1.8+)
+├── CLAUDE.md                                 # project rule: catalog.json + SKILL.md in sync
 ├── .claude/
 │   ├── agents/                               # 10 versioned persona files
 │   │   ├── stx-analyst.md
@@ -327,15 +353,17 @@ stx-skills/
 │   │   ├── stx-dev-base.md
 │   │   └── stx-dev-tier-{db,service,api,ui}.md
 │   └── skills/
-│       ├── stx-feature/        (SKILL.md + templates/)
-│       ├── stx-fix/            (SKILL.md + template.md)
-│       ├── stx-checkin/        (SKILL.md + README.md)
-│       ├── stx-pr-merge/       (SKILL.md + README.md)
-│       ├── stx-image/          (SKILL.md + README.md)
-│       ├── stx-magazine-report/(SKILL.md + README.md + prompt.md)
-│       ├── stx-worktree-report/(SKILL.md + template.html)
-│       ├── stx-help/           (SKILL.md)
-│       └── stx-help-html/      (SKILL.md + README.md + help.html)  ← canonical doc
+│       ├── catalog.schema.json                 ← JSON Schema for catalog.json files
+│       ├── stx-feature/        (SKILL.md + catalog.json + templates/)
+│       ├── stx-fix/            (SKILL.md + catalog.json + template.md)
+│       ├── stx-checkin/        (SKILL.md + catalog.json + README.md)
+│       ├── stx-pr-merge/       (SKILL.md + catalog.json + README.md)
+│       ├── stx-version-bump/   (SKILL.md + catalog.json)
+│       ├── stx-image/          (SKILL.md + catalog.json + README.md)
+│       ├── stx-magazine-report/(SKILL.md + catalog.json + README.md + prompt.md)
+│       ├── stx-worktree-report/(SKILL.md + catalog.json + template.html)
+│       ├── stx-help/           (SKILL.md + catalog.json)              ← BEGIN/END AUTO region
+│       └── stx-help-html/      (SKILL.md + catalog.json + help.html)  ← BEGIN/END AUTO region
 └── scripts/
     └── install.sh                            # fallback bash installer
 ```

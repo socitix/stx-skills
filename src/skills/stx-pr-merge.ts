@@ -23,6 +23,21 @@ import * as os from 'os';
 import * as path from 'path';
 import * as readline from 'readline';
 
+import {
+  BumpLevel,
+  BumpPlan,
+  VersionBumpError,
+  findVersionSource,
+  hasUncommittedBumpAhead,
+  hasVersionSurface,
+  planBump,
+  readCommitBody,
+  readCommitSubject,
+  readVersion,
+  runBump,
+  versionAlreadyTagged,
+} from '../lib/version-bump';
+
 // =============================================================================
 // ANSI Colors
 // =============================================================================
@@ -69,6 +84,16 @@ interface CliOptions {
   worktreePath?: string;
   branchOverride?: string;
   waveStatePath?: string;
+  // Version-bump knobs. Default: 'auto' (infer from commit subject; feat: → patch,
+  // fix:/perf: → patch, feat!: / BREAKING CHANGE: → major, anything else → none).
+  // Set to 'none' (or pass --no-bump) to skip entirely. Explicit minor/major
+  // overrides the conservative inference.
+  bump: BumpLevel | 'auto';
+  // Skip pushing the vX.Y.Z tag after the merge. The bump still happens — only
+  // the tag step is suppressed.
+  noTag: boolean;
+  // Override version source for non-Node repos (e.g. a plain VERSION file).
+  versionFile?: string;
 }
 
 function parseArgs(args: string[]): CliOptions {
@@ -81,6 +106,8 @@ function parseArgs(args: string[]): CliOptions {
     skipBuild2: false,
     help: false,
     logUsage: false,
+    bump: 'auto',
+    noTag: false,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -132,6 +159,24 @@ function parseArgs(args: string[]): CliOptions {
       case '--wave-state':
         options.waveStatePath = args[++i];
         break;
+      case '--bump': {
+        const v = (args[++i] ?? '').toLowerCase();
+        if (v !== 'patch' && v !== 'minor' && v !== 'major' && v !== 'none' && v !== 'auto') {
+          console.error(c.error(`--bump must be one of: patch, minor, major, none, auto (got "${v}")`));
+          process.exit(2);
+        }
+        options.bump = v as BumpLevel | 'auto';
+        break;
+      }
+      case '--no-bump':
+        options.bump = 'none';
+        break;
+      case '--no-tag':
+        options.noTag = true;
+        break;
+      case '--version-file':
+        options.versionFile = args[++i];
+        break;
       default:
         // Ignore unknown args silently — keeps the door open for future flags
         break;
@@ -160,6 +205,16 @@ ${c.bold('OPTIONS')}
   -f, --force            Skip non-destructive confirmations
   -h, --help             Show this help
 
+${c.bold('VERSION BUMP')}
+  --bump <level>         patch | minor | major | none | auto  (default: auto)
+                         auto = feat:/fix:/perf: → patch · feat!:/BREAKING → major
+                                everything else → no bump
+                         minor/major are explicit-only (never inferred).
+  --no-bump              Shortcut for --bump none.
+  --no-tag               Bump version but skip pushing the vX.Y.Z tag after merge.
+  --version-file <path>  Use a plain VERSION file instead of package.json
+                         (for non-Node repos).
+
 ${c.bold('WAVE USAGE LOGGING')}
   --log-usage            Only record /stx-feature wave token+time usage, then exit
   --worktree-path <s>    Feature worktree path (default: current worktree root)
@@ -167,8 +222,9 @@ ${c.bold('WAVE USAGE LOGGING')}
   --wave-state <s>       Explicit wave-state.json path (skips auto-discovery)
 
 ${c.bold('CHAIN')}
-  pre-flight → commit → push & PR → build #1 → squash-merge →
-  refresh main → build #2 → worktree cleanup → branch delete
+  pre-flight → commit → ${c.bold('version bump')} → push & PR → build #1 →
+  squash-merge → refresh main → ${c.bold('tag & push')} → build #2 →
+  worktree cleanup → branch delete
 
 ${c.bold('GOVERNANCE')}
   This skill respects the user's CRITICAL rules from ~/.claude/CLAUDE.md:
@@ -634,6 +690,13 @@ interface Context {
   repoSlug: string | null;
   prNumber?: number;
   commitSubject?: string;
+  /**
+   * Populated by step1b_bumpVersion when a bump actually happened.
+   * Stays undefined when the step skipped (no package.json, level=none,
+   * --no-bump, or re-run detection). step5b_tagAndPush keys off this:
+   * no plan → no tag.
+   */
+  bumpedTo?: string;
 }
 
 async function step0_preflight(options: CliOptions): Promise<Context> {
@@ -760,6 +823,173 @@ async function step1_commit(ctx: Context, options: CliOptions): Promise<void> {
   });
 
   console.log(c.success(`\n✅ Committed: "${ctx.commitSubject}"`));
+}
+
+// =============================================================================
+// STEP 1b — Version bump (between Commit and Push)
+//
+// Reads the just-made commit subject, infers a bump level (conservative:
+// feat:/fix:/perf: → patch; feat!:/BREAKING CHANGE → major; everything else
+// → none), and writes a separate `chore(release): bump version to X.Y.Z`
+// commit on top of the feature commit. The tag step (5b) runs after the
+// merge so the tag points at the post-squash SHA on main, not at a
+// throwaway feature-branch SHA.
+//
+// Skips silently when:
+//   • No package.json (non-Node repo) and no --version-file
+//   • Inferred level is `none` and the user didn't override
+//   • --no-bump
+//   • Re-run case: package.json already > latest vX.Y.Z tag (we bumped
+//     before and a prior step failed — don't double-bump)
+//
+// Halts when:
+//   • package.json exists but has no `version` field
+//   • npm is not on PATH
+//   • Target version vX.Y.Z already exists (local or remote)
+// =============================================================================
+
+async function step1b_bumpVersion(ctx: Context, options: CliOptions): Promise<void> {
+  console.log(c.bold('\n═══════════════════════════════════════════════════════════════'));
+  console.log(c.bold('  STEP 1b: Version bump'));
+  console.log(c.bold('═══════════════════════════════════════════════════════════════\n'));
+
+  if (options.bump === 'none') {
+    console.log(c.dim('Skipped: --no-bump / --bump none.'));
+    return;
+  }
+
+  // Locate the version source — package.json (canonical) or a --version-file path
+  let source;
+  try {
+    source = findVersionSource(ctx.featureWorktree, options.versionFile);
+  } catch (err) {
+    if (err instanceof VersionBumpError) {
+      halt(err.message, { code: err.code });
+    }
+    throw err;
+  }
+  if (!source) {
+    console.log(
+      c.dim(
+        '  No package.json with a version field found, and no --version-file provided.\n' +
+          '  Skipping version bump (non-Node repo).',
+      ),
+    );
+    return;
+  }
+
+  // Re-run safety: pkg already > latest tag → a prior run already bumped this
+  // branch. Don't double-bump. Mark ctx.bumpedTo from package.json so STEP 5b
+  // still tags this version.
+  if (hasUncommittedBumpAhead(ctx.featureWorktree, source)) {
+    const already = readVersion(source);
+    console.log(
+      c.dim(
+        `  ${path.basename(source.filePath)} version (${already}) is already ahead of the latest vX.Y.Z tag.\n` +
+          '  A prior /stx-pr-merge run already bumped this branch — skipping bump, will still tag.',
+      ),
+    );
+    ctx.bumpedTo = already;
+    return;
+  }
+
+  // Build the plan (pure)
+  const commitSubject = ctx.commitSubject ?? readCommitSubject(ctx.featureWorktree);
+  const commitBody = readCommitBody(ctx.featureWorktree);
+  let plan: BumpPlan;
+  try {
+    plan = planBump(source, commitSubject, commitBody, options.bump);
+  } catch (err) {
+    if (err instanceof VersionBumpError) {
+      halt(err.message, { code: err.code });
+    }
+    throw err;
+  }
+
+  console.log(`  ${c.dim('source:')}        ${path.relative(ctx.featureWorktree, source.filePath) || source.filePath}`);
+  console.log(`  ${c.dim('current:')}       ${plan.fromVersion}`);
+  console.log(`  ${c.dim('commit subj:')}   ${commitSubject}`);
+  console.log(`  ${c.dim('inferred:')}      ${c.info(plan.level)}`);
+  console.log(`  ${c.dim('reason:')}        ${plan.reason}`);
+
+  if (plan.level === 'none') {
+    console.log(
+      c.dim(
+        '\n  No bump. To force one this run, re-invoke with --bump patch (or minor/major).',
+      ),
+    );
+    return;
+  }
+
+  // Collision check — vX.Y.Z must not already exist
+  if (versionAlreadyTagged(ctx.featureWorktree, plan.toVersion)) {
+    halt(`Tag v${plan.toVersion} already exists (locally or on origin).`, {
+      hint: `Someone may have shipped that version first. Pull tags (\`git fetch --tags\`), re-evaluate the level, or pass --no-bump.`,
+    });
+  }
+
+  console.log(`  ${c.dim('target:')}        ${c.bold(plan.toVersion)}`);
+
+  await confirmGate(`bump ${plan.fromVersion} → ${plan.toVersion} (${plan.level})`, options);
+
+  if (options.dryRun) {
+    console.log(c.dim(`\n  [DRY RUN] npm version ${plan.level} --no-git-tag-version`));
+    console.log(c.dim(`  [DRY RUN] git commit -m "chore(release): bump version to ${plan.toVersion}"`));
+    ctx.bumpedTo = plan.toVersion; // so STEP 5b prints its dry-run too
+    return;
+  }
+
+  // Run the bump (writes to package.json / version-file)
+  let newVersion: string;
+  try {
+    newVersion = runBump(ctx.featureWorktree, source, plan.level);
+  } catch (err) {
+    if (err instanceof VersionBumpError) {
+      halt(err.message, { code: err.code });
+    }
+    throw err;
+  }
+
+  // Stage exactly the bumped files. For package.json we also pick up
+  // package-lock.json if npm touched it. We deliberately do NOT `git add -A`
+  // here — the feature commit already staged its files; the release commit
+  // should be ONLY the version bump.
+  const toStage: string[] = [];
+  if (source.kind === 'package.json') {
+    toStage.push('package.json');
+    if (fs.existsSync(path.join(ctx.featureWorktree, 'package-lock.json'))) {
+      toStage.push('package-lock.json');
+    }
+  } else {
+    toStage.push(path.relative(ctx.featureWorktree, source.filePath));
+  }
+  execGit(`add ${toStage.map(f => JSON.stringify(f)).join(' ')}`, ctx.featureWorktree);
+
+  // Commit as a separate, dedicated release commit
+  const releaseSubject = `chore(release): bump version to ${newVersion}`;
+  const releaseBody = `Bumped from ${plan.fromVersion} → ${newVersion} (${plan.level}).
+Reason: ${plan.reason}`;
+  const fullMessage = `${releaseSubject}\n\n${releaseBody}\n\nCo-Authored-By: Claude <noreply@anthropic.com>`;
+  execSync(`git commit -m "$(cat <<'EOF'\n${fullMessage}\nEOF\n)"`, {
+    encoding: 'utf-8',
+    shell: '/bin/bash',
+    cwd: ctx.featureWorktree,
+  });
+
+  ctx.bumpedTo = newVersion;
+  console.log(c.success(`\n✅ Bumped ${plan.fromVersion} → ${newVersion} as separate "chore(release):" commit.`));
+
+  // Informational: does this repo surface the version anywhere visible?
+  if (!hasVersionSurface(ctx.featureWorktree)) {
+    console.log(
+      c.dim(
+        '\n  ℹ Note: nothing in this repo appears to surface the package.json version\n' +
+          '    in the running app. The findependence pattern (next.config.js + footer\n' +
+          '    badge) is documented in /stx-version-bump --help. No auto-scaffold —\n' +
+          '    visual surfaces belong to the project design system.',
+      ),
+    );
+  }
 }
 
 async function step2_pushAndPr(ctx: Context, options: CliOptions): Promise<void> {
@@ -918,6 +1148,71 @@ async function step5_refreshMain(ctx: Context, options: CliOptions): Promise<voi
   }
 }
 
+// =============================================================================
+// STEP 5b — Tag and push (after Refresh main)
+//
+// If step 1b bumped, tag the post-squash commit on main with vX.Y.Z and push
+// the tag. Tagging on main (not on the feature branch) keeps tags pointing
+// at the real shipped commit — squash-merge generates a fresh SHA on main
+// that's NOT the feature-branch SHA, so a tag created earlier would point
+// at a commit nobody can reach.
+//
+// Skips when:
+//   • Step 1b skipped (no ctx.bumpedTo)
+//   • --no-tag
+// =============================================================================
+
+async function step5b_tagAndPush(ctx: Context, options: CliOptions): Promise<void> {
+  if (!ctx.bumpedTo) {
+    return; // no bump → no tag — silently skipped
+  }
+  if (options.noTag) {
+    console.log(c.dim('\nVersion bumped but --no-tag set; skipping tag push.'));
+    return;
+  }
+
+  console.log(c.bold('\n═══════════════════════════════════════════════════════════════'));
+  console.log(c.bold('  STEP 5b: Tag and push release'));
+  console.log(c.bold('═══════════════════════════════════════════════════════════════\n'));
+
+  const tag = `v${ctx.bumpedTo}`;
+  console.log(`  ${c.dim('cwd:')}    ${ctx.mainWorktree}`);
+  console.log(`  ${c.dim('tag:')}    ${c.bold(tag)} → main HEAD`);
+
+  await confirmGate(`tag main as ${tag} and push tag`, options);
+
+  if (options.dryRun) {
+    console.log(c.dim(`\n  [DRY RUN] (cd ${ctx.mainWorktree} && git tag ${tag})`));
+    console.log(c.dim(`  [DRY RUN] (cd ${ctx.mainWorktree} && git push origin ${tag})`));
+    return;
+  }
+
+  // Tag locally on main
+  try {
+    execGit(`tag ${tag}`, ctx.mainWorktree);
+  } catch (err) {
+    // Most common cause: tag already exists locally (race or re-run after a
+    // partial). Surface but don't auto-overwrite — the user must decide.
+    halt(`git tag ${tag} failed (already exists?).`, {
+      cwd: ctx.mainWorktree,
+      error: err instanceof Error ? err.message : String(err),
+      hint: `If a previous run already pushed ${tag}, the bump is already shipped; pass --no-tag or delete the local tag.`,
+    });
+  }
+
+  // Push the tag to origin
+  try {
+    execGit(`push origin ${tag}`, ctx.mainWorktree);
+    console.log(c.success(`\n✅ Tagged and pushed ${tag}`));
+  } catch (err) {
+    halt(`git push origin ${tag} failed.`, {
+      cwd: ctx.mainWorktree,
+      error: err instanceof Error ? err.message : String(err),
+      hint: `Tag exists locally but isn't on origin. Retry with: git -C ${ctx.mainWorktree} push origin ${tag}`,
+    });
+  }
+}
+
 async function step6_cleanupWorktree(ctx: Context, options: CliOptions): Promise<void> {
   console.log(c.bold('\n═══════════════════════════════════════════════════════════════'));
   console.log(c.bold('  STEP 6: Worktree cleanup'));
@@ -1031,6 +1326,12 @@ async function main(): Promise<void> {
     // Step 1: Commit
     await step1_commit(ctx, options);
 
+    // Step 1b: Version bump (separate `chore(release):` commit on the feature
+    // branch; squash-merge folds it back into one commit on main). Always
+    // runs — it self-skips when there's no package.json, the inferred level
+    // is `none`, or --no-bump was passed.
+    await step1b_bumpVersion(ctx, options);
+
     // Step 2: Push & PR
     await step2_pushAndPr(ctx, options);
 
@@ -1046,6 +1347,11 @@ async function main(): Promise<void> {
 
     // Step 5: Refresh main
     await step5_refreshMain(ctx, options);
+
+    // Step 5b: Tag main with vX.Y.Z and push the tag — only if step 1b
+    // actually bumped. Tag points at the post-squash SHA on main, NOT at
+    // the throwaway feature-branch SHA.
+    await step5b_tagAndPush(ctx, options);
 
     // Step 6: Build validation #2 (main worktree)
     if (!options.skipBuild2) {
@@ -1064,6 +1370,9 @@ async function main(): Promise<void> {
     console.log(c.success('  ✅ stx-pr-merge complete!'));
     console.log(c.bold('═══════════════════════════════════════════════════════════════'));
     console.log(`  Feature branch ${c.info(ctx.branch)} merged via PR ${ctx.prNumber ? '#' + ctx.prNumber : ''}`);
+    if (ctx.bumpedTo) {
+      console.log(`  Version       ${c.info('v' + ctx.bumpedTo)} ${options.noTag ? c.dim('(not tagged — --no-tag)') : c.dim('tagged on main')}`);
+    }
     console.log(`  Worktree ${c.dim(ctx.featureWorktree)} removed`);
     console.log(`  Local branch ${c.dim(ctx.branch)} deleted`);
     console.log('');

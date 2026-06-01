@@ -1,0 +1,78 @@
+{
+  "$schema": "../catalog.schema.json",
+  "name": "stx-version-bump",
+  "slash": "/stx-version-bump",
+  "version": "1.0.0",
+  "zone": "any",
+  "icon": "V",
+  "terminal": {
+    "group": "ANY-BOUND",
+    "lines": [
+      "Bump SemVer + chore(release) commit + local tag (no push)"
+    ]
+  },
+  "card": {
+    "summary": "Standalone SemVer bump: reads package.json, infers a conservative level from the commit subject, writes a separate chore(release) commit, tags locally. No push.",
+    "paragraph": "The standalone counterpart to <code>/stx-pr-merge</code>'s built-in bump step. Use when you forgot to bump in the last shipped PR, want to override the auto-inference, or are aggregating several feature PRs into a single release commit. Strictly local — push is intentionally left to <code>/stx-pr-merge</code> or a hand-run <code>git push --follow-tags</code>.",
+    "use_when": [
+      "Last PR shipped without a bump — make a release commit now",
+      "Auto picked patch for a <code>feat:</code>, want to bump <em>minor</em> instead",
+      "Release-PR style: aggregate several merged PRs into one <code>chore(release)</code>",
+      "Using <code>/stx-checkin</code> (no <code>/stx-pr-merge</code>) and want the bump artifact locally"
+    ],
+    "dontuse_when": [
+      "You're running <code>/stx-pr-merge</code> — its STEP 1b already does this",
+      "Working tree is dirty — release commit must be bump-only",
+      "You want to push the tag — use <code>/stx-pr-merge</code> or <code>git push --follow-tags</code>"
+    ],
+    "invocations": [
+      {
+        "comment": "auto-infer level from HEAD commit subject",
+        "cmd": "/stx-version-bump"
+      },
+      {
+        "comment": "explicit level (positional or via flag)",
+        "cmd": "/stx-version-bump <s>minor</s>\n/stx-version-bump <o>--bump</o> <s>major</s>"
+      },
+      {
+        "comment": "infer from a non-HEAD commit (e.g. release-PR aggregation)",
+        "cmd": "/stx-version-bump <o>--from-commit</o> <s>HEAD~3</s>"
+      },
+      {
+        "comment": "bump but defer tagging",
+        "cmd": "/stx-version-bump <s>patch</s> <o>--no-tag</o>"
+      },
+      {
+        "comment": "non-Node repo using a plain VERSION file",
+        "cmd": "/stx-version-bump <o>--version-file</o> <s>VERSION</s>"
+      },
+      {
+        "comment": "preview only",
+        "cmd": "/stx-version-bump <o>--dry-run</o>"
+      }
+    ],
+    "extras": [
+      {
+        "kind": "table",
+        "title": "Auto-inference policy (conservative)",
+        "headers": ["Commit subject pattern", "Inferred level"],
+        "rows": [
+          ["<code>feat:</code> / <code>fix:</code> / <code>perf:</code>", "<code>patch</code>"],
+          ["<code>feat!:</code> / <code>fix!:</code> / <code>BREAKING CHANGE:</code> in body", "<code>major</code>"],
+          ["<code>chore:</code> / <code>docs:</code> / <code>refactor:</code> / <code>style:</code> / <code>test:</code> / <code>ci:</code> / <code>build:</code>", "<code>none</code> (skipped)"],
+          ["Anything else", "<code>none</code> — pass <code>--bump</code> to force"]
+        ]
+      },
+      {
+        "kind": "paragraph",
+        "title": "minor / major are explicit-only",
+        "html": "The auto-policy never infers <code>minor</code> or <code>major</code> on its own — those require an explicit positional <code>minor</code>/<code>major</code> or <code>--bump minor</code>/<code>--bump major</code>. <code>!</code>/<code>BREAKING CHANGE:</code> markers are the one exception (they signal <code>major</code> deliberately)."
+      },
+      {
+        "kind": "callout",
+        "tone": "teal",
+        "html": "Tag is created <strong>locally only</strong>. Push when you ship — <code>/stx-pr-merge</code> does this automatically at STEP 5b, or run <code>git push origin vX.Y.Z</code> by hand."
+      }
+    ]
+  }
+}

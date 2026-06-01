@@ -1,7 +1,7 @@
 ---
 name: stx-pr-merge
-description: End-to-end feature-branch workflow — commit, push, open PR, build-validate, squash-merge, refresh main, build-validate again, then clean up the worktree and branch. Halts on any step failure for user review. Records /stx-feature wave token+time usage at close-out.
-version: 1.1.0
+description: End-to-end feature-branch workflow — commit, version-bump (conservative auto-infer; feat:/fix:/perf: → patch, feat!:/BREAKING → major, else none), push, open PR, build-validate, squash-merge, refresh main, tag vX.Y.Z and push tag, build-validate again, then clean up the worktree and branch. Halts on any step failure for user review. Records /stx-feature wave token+time usage at close-out.
+version: 1.2.0
 author: STX
 ---
 
@@ -75,6 +75,44 @@ This step is **best-effort**: it always exits 0. Any failure prints a one-line w
    )"
    ```
 
+### Version bump (between Commit and Push)
+
+Reads the just-made commit subject, picks a SemVer bump level (conservative auto-policy by default), writes a separate `chore(release): bump version to X.Y.Z` commit on top of the feature commit. The squash-merge in STEP 4 folds both commits back into one on `main`, so the on-main history stays clean.
+
+**Auto-inference policy (default `--bump auto`):**
+
+| Commit subject pattern | Inferred level |
+|---|---|
+| `feat:` / `fix:` / `perf:` | `patch` |
+| `feat!:` / `fix!:` / `BREAKING CHANGE:` in body | `major` |
+| `chore:` / `docs:` / `refactor:` / `style:` / `test:` / `ci:` / `build:` | `none` |
+| Anything else | `none` (pass `--bump` to force) |
+
+**`minor` and `major` are explicit-only.** The auto-policy never picks them on its own; pass `--bump minor` / `--bump major` (or use `/stx-version-bump`) when this PR warrants more than a patch. The one exception is `!` / `BREAKING CHANGE:`, which signals `major` deliberately.
+
+Mechanics:
+
+1. Find `package.json` with a `version` field (or `--version-file <path>` for non-Node repos). No source → skip silently.
+2. Re-run safety: if `package.json` is already ahead of the latest `vX.Y.Z` tag, skip the bump (a previous run already did it) but remember the version so STEP 5b still tags.
+3. Tag-collision check: halt if `vX.Y.Z` already exists locally or on origin.
+4. `npm version <level> --no-git-tag-version`. (We disable npm's own commit + tag because we want our own subject shape and we tag on `main` post-squash, not on the feature branch.)
+5. `git add package.json` (+ `package-lock.json` if present) — only the bump files, never `-A`.
+6. `git commit -m "chore(release): bump version to X.Y.Z"` with a body that records `from → to` + the inference reason + the standard co-author trailer.
+7. Informational only: if no `NEXT_PUBLIC_APP_VERSION` / `import.meta.env.*VERSION*` / `VERSION` file read is detected anywhere in the repo, print a one-line pointer to the surface-the-version recipe. **Never auto-scaffolds** — visual surfaces belong to the project's design system.
+
+Halt conditions specific to this step:
+
+- `package.json` exists but has no `version` field → halt.
+- `npm` not on PATH (and no `--version-file`) → halt.
+- Target `vX.Y.Z` already exists (local or remote) → halt.
+
+Skip conditions (silent, with a one-line note):
+
+- No `package.json` and no `--version-file`.
+- Inferred level is `none` and the user didn't override.
+- `--no-bump` / `--bump none`.
+- Re-run case (pkg already ahead of the latest tag) — bump skipped, tag still happens.
+
 ### Push & PR
 
 1. `git push -u origin <branch>`. If the remote rejects (non-fast-forward, protected branch, auth failure), halt.
@@ -110,6 +148,20 @@ This step is **best-effort**: it always exits 0. Any failure prints a one-line w
 - `cd <main-worktree-path> && git pull --ff-only origin main`.
 - If `--ff-only` fails (the main worktree has diverging local commits), halt — the user needs to resolve.
 
+### Tag and push (after Refresh main)
+
+Only runs when the bump step actually bumped (skipped otherwise — no version change → no tag).
+
+1. `cd <main-worktree-path> && git tag vX.Y.Z` — points the tag at the post-squash SHA on `main`. Critical: tagging on the feature branch before the merge would orphan the tag (squash creates a new SHA), so we always tag on `main` after the fast-forward.
+2. `git push origin vX.Y.Z` — pushes the tag.
+
+Halt conditions specific to this step:
+
+- `git tag` fails (most often: tag already exists locally — a previous run pushed it). Halt with a pointer to `--no-tag` for the rerun case.
+- `git push origin vX.Y.Z` fails (network / auth). Halt with the explicit retry command.
+
+Skipped silently when `--no-tag` is passed (the bump still happens; only the tag step is suppressed).
+
 ### Build validation #2 (main worktree)
 
 - From the main worktree path, run the project's build command again.
@@ -138,9 +190,9 @@ This step is **best-effort**: it always exits 0. Any failure prints a one-line w
 The skill expects to be invoked in one of two ways:
 
 **Single chained approval (preferred).** The user says something like:
-> "Commit these changes, push the branch, open a PR titled 'fix: timer offset', squash-merge it, refresh main, and clean up the worktree."
+> "Commit these changes, bump version, push the branch, open a PR titled 'fix: timer offset', squash-merge it, refresh main, tag and push, and clean up the worktree."
 
-That single sentence enumerates every step and counts as approval for the whole chain (per governance rule #3). The skill executes top to bottom and only halts on failure.
+That single sentence enumerates every step and counts as approval for the whole chain (per governance rule #3). The skill executes top to bottom and only halts on failure. The version-bump and tag-and-push steps are part of the chain by default; pass `--no-bump` to suppress both, or `--no-tag` to keep the bump but skip pushing the tag.
 
 **Step-by-step.** The user invokes `/stx-pr-merge --interactive` (or omits a chained instruction). The skill prompts for approval at each commit/push/merge/cleanup boundary.
 
@@ -150,11 +202,13 @@ The skill stops and surfaces — never silently continues — when any of the fo
 
 - Pre-flight: dirty unrelated files, already on main, no remote, missing main worktree.
 - Commit: empty message, staged-files list doesn't match what the user described.
+- Version bump: `package.json` exists but has no `version` field; `npm` not on PATH; target `vX.Y.Z` already exists locally or on origin.
 - Push: rejected by remote, branch protection violation, auth failure.
 - PR: `gh` not installed or not authenticated, body template incomplete.
 - Build #1: any non-zero exit from the build command.
 - Merge: conflicts, required reviews not met, required checks failing.
 - Refresh: non-fast-forward `git pull` on main worktree.
+- Tag and push: `git tag vX.Y.Z` fails (tag already exists locally); `git push origin vX.Y.Z` fails (network / auth).
 - Build #2: any non-zero exit, regardless of whether the cause appears related to the PR.
 - Cleanup: `git worktree remove` failing for a reason other than build artifacts.
 
@@ -167,6 +221,10 @@ In every halt case the skill prints what happened, what state the repo is in, an
 /stx-pr-merge --interactive                    # Prompt at each gate
 /stx-pr-merge --dry-run                        # Print every command without executing
 /stx-pr-merge --pr-title "fix: timer offset"   # Pre-supply the PR title
+/stx-pr-merge --bump minor                     # Force minor bump (auto otherwise; see below)
+/stx-pr-merge --no-bump                        # Skip version bump entirely (also skips tag)
+/stx-pr-merge --no-tag                         # Bump version but don't push tag
+/stx-pr-merge --version-file VERSION           # Use a plain VERSION file (non-Node repo)
 /stx-pr-merge --skip-build-1                   # Skip pre-merge build (NOT RECOMMENDED)
 /stx-pr-merge --skip-build-2                   # Skip post-merge build (NOT RECOMMENDED)
 /stx-pr-merge --log-usage                      # Only record this wave's token+time usage, then exit
@@ -184,6 +242,10 @@ In every halt case the skill prints what happened, what state the repo is in, an
 | `--build-cmd <s>` | Override the build command. Default: `npm run build`. |
 | `--skip-build-1` | Skip pre-merge build validation. **Not recommended** — it's the cheaper of the two halt gates. |
 | `--skip-build-2` | Skip post-merge build validation. **Not recommended** — this is the gate that catches a broken main. |
+| `--bump <level>` | `patch` / `minor` / `major` / `none` / `auto` (default `auto`). Auto = `feat:`/`fix:`/`perf:` → patch; `feat!:` / `BREAKING CHANGE:` → major; else none. `minor`/`major` are never inferred — pass explicitly. |
+| `--no-bump` | Shortcut for `--bump none`. Skips both STEP 1b (bump) and STEP 5b (tag). |
+| `--no-tag` | Bump version but don't push the `vX.Y.Z` tag in STEP 5b. |
+| `--version-file <path>` | Use a plain `VERSION` file instead of `package.json` (non-Node repos). |
 | `-f`, `--force` | Skip non-destructive confirmations (does **not** bypass governance gates). |
 | `--log-usage` | Only record `/stx-feature` wave token+time usage into its `wave-state.json`, then exit 0. Runs automatically (best-effort) during the full chain after pre-flight; this flag is for invoking it standalone. |
 | `--worktree-path <s>` | (with `--log-usage`) Feature worktree to attribute usage to. Default: current worktree root. |
@@ -202,4 +264,5 @@ In every halt case the skill prints what happened, what state the repo is in, an
 ## See also
 
 - [`/stx-checkin`](../stx-checkin/SKILL.md) — partial flow: commit and push only, no merge or cleanup
+- [`/stx-version-bump`](../stx-version-bump/SKILL.md) — the bump step extracted as a standalone skill. Same shared policy, used for forgot-to-bump / override / release-PR-aggregation cases.
 - [README.md](./README.md) — design notes and rationale
