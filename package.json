@@ -8,13 +8,14 @@
     "stx-checkin": "./dist/skills/stx-checkin.js",
     "stx-pr-merge": "./dist/skills/stx-pr-merge.js",
     "stx-image": "./dist/skills/stx-image.js",
-    "stx-worktree-report": "./dist/skills/stx-worktree-report.js"
+    "stx-worktree-report": "./dist/skills/stx-worktree-report.js",
+    "stx-generate-help": "./dist/cli/generate-help.js"
   },
   "scripts": {
-    "build": "tsc && npm run prepare-docs",
+    "build": "tsc && node dist/cli/generate-help.js",
     "watch": "tsc --watch",
     "clean": "rm -rf dist",
-    "prepare-docs": "mkdir -p docs && cp .claude/skills/stx-help-html/help.html docs/index.html",
+    "check-docs": "tsc && node dist/cli/generate-help.js --check",
     "prepare": "npm run build",
     "prepublishOnly": "npm run build"
   },

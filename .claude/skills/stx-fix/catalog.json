@@ -1,0 +1,61 @@
+{
+  "$schema": "../catalog.schema.json",
+  "name": "stx-fix",
+  "slash": "/stx-fix",
+  "version": "1.2.0",
+  "zone": "main",
+  "icon": "B",
+  "terminal": {
+    "group": "MAIN-BOUND",
+    "lines": [
+      "Two-agent QA → Coder loop for a known bug",
+      "Add --autonomous to skip the acceptance gate (never commits)"
+    ]
+  },
+  "card": {
+    "summary": "Two-agent QA → Coder loop for a known bug. Failing test first, smallest change to make it pass. Personas live in <code>.claude/agents/</code>.",
+    "paragraph": "QA → Coder loop against one reproducible bug. Interview → render prompt → user acceptance → loop. The Coder cannot edit test files; touching them halts the loop.",
+    "use_when": [
+      "Reproducible bug with concrete URL/state/steps",
+      "You want failing test first, then minimal fix",
+      "Fix fits one worktree"
+    ],
+    "dontuse_when": [
+      "Multiple acceptance criteria → <code>/stx-feature</code>",
+      "Spans multiple tiers → <code>/stx-feature</code>",
+      "You don't have a repro yet"
+    ],
+    "invocations": [
+      { "comment": "Interactive", "cmd": "/stx-fix" },
+      { "comment": "Pre-supply title", "cmd": "/stx-fix Timer offset wrong after DST" },
+      { "comment": "Autonomous — skip acceptance gate; forces no-commit", "cmd": "/stx-fix <o>--autonomous</o> <o>--from</o> bug.yaml" }
+    ],
+    "extras": [
+      {
+        "kind": "table",
+        "title": "Required interview fields",
+        "headers": ["Field", "Type", "Default"],
+        "rows": [
+          ["title", "text", "—"],
+          ["issues", "numbered list", "—"],
+          ["repro", "text", "—"],
+          ["expected", "numbered list", "mirrors issues 1:1"],
+          ["test_kind", "radio", "playwright (UI) / vitest-unit (logic)"],
+          ["iteration_cap", "number", "5"],
+          ["commit_policy", "radio", "commit-after-green"]
+        ]
+      },
+      {
+        "kind": "bullets",
+        "title": "Halt conditions",
+        "items": [
+          "Coder edits a test file",
+          "Coder weakens or skips an assertion",
+          "Iteration cap trips (default 5)",
+          "Lint/build fails for an unrelated reason",
+          "<code>--autonomous</code> does not bypass any halt condition above — it only skips the acceptance gate and forces no-commit."
+        ]
+      }
+    ]
+  }
+}

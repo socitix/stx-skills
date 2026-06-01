@@ -1,0 +1,46 @@
+{
+  "$schema": "../catalog.schema.json",
+  "name": "stx-image",
+  "slash": "/stx-image",
+  "version": "1.0.0",
+  "zone": "any",
+  "icon": "I",
+  "terminal": {
+    "group": "ANY-BOUND",
+    "lines": [
+      "Audit and optionally resize project images"
+    ]
+  },
+  "card": {
+    "summary": "Audit project images for AI-context-safe sizing. Reports unused &amp; oversized; optional resize via macOS sips.",
+    "paragraph": "Scans for images, reports which are unreferenced and which exceed Claude Vision's 1568 px / 500 KB thresholds. Default mode makes no changes.",
+    "use_when": [
+      "Images bloating context",
+      "Want a defensible report before cleanup",
+      "Want to know which assets are unreferenced"
+    ],
+    "dontuse_when": [
+      "Not on macOS and don't need analysis (raster dims need sips)",
+      "Images loaded by constructed strings (false positives in \"unused\")"
+    ],
+    "invocations": [
+      { "comment": "Analyze only", "cmd": "/stx-image" },
+      { "comment": "Subfolder", "cmd": "/stx-image <o>--folder</o> public" },
+      { "comment": "Apply (in place via sips)", "cmd": "/stx-image <o>--folder</o> public <o>--apply</o>" },
+      { "comment": "Also delete unused", "cmd": "/stx-image <o>--apply --delete-unused</o>" }
+    ],
+    "extras": [
+      {
+        "kind": "table",
+        "title": "Thresholds",
+        "headers": ["Threshold", "Default", "Why"],
+        "rows": [
+          ["File size", "500 KB", "Claude Vision resizes large images; bytes beyond this are wasted"],
+          ["Longest edge", "1568 px", "Matches Claude's internal pre-processing cap"],
+          ["Logo/icon target", "512 px", "Always rendered small"],
+          ["SVG flagged at", "100 KB", "Usually embedded rasters — recommend SVGO"]
+        ]
+      }
+    ]
+  }
+}

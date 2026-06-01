@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/socitix/stx-skills/.claude/skills/catalog.schema.json",
+  "title": "STX Skill Catalog Entry",
+  "description": "Single source of truth for one STX skill's user-facing documentation. Lives at .claude/skills/<name>/catalog.json. Consumed by the generator in .claude/skills/stx-help-html/scripts/generate-help.js, which writes the terminal listing into stx-help/SKILL.md and the HTML cards into stx-help-html/help.html (both regions delimited by BEGIN AUTO / END AUTO markers).",
+  "type": "object",
+  "required": ["name", "slash", "version", "zone", "icon", "terminal", "card"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Folder name under .claude/skills/ — must match the directory this catalog.json lives in.",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "slash": {
+      "type": "string",
+      "description": "Display name with leading slash, e.g. /stx-feature.",
+      "pattern": "^/[a-z][a-z0-9-]+$"
+    },
+    "version": {
+      "type": "string",
+      "description": "Must equal the version field of the matching SKILL.md frontmatter. The build's check-docs step verifies this.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "zone": {
+      "enum": ["main", "worktree", "any", "planned"],
+      "description": "Where the skill is meant to run. Drives the type chip in HTML cards and the group in the terminal listing."
+    },
+    "icon": {
+      "type": "string",
+      "description": "Single uppercase letter shown in the HTML card's left badge.",
+      "pattern": "^[A-Z]$"
+    },
+    "terminal": {
+      "type": "object",
+      "required": ["group", "lines"],
+      "description": "How this skill is rendered in /stx-help's terminal listing.",
+      "properties": {
+        "group": {
+          "enum": ["MAIN-BOUND", "WORKTREE-BOUND", "ANY-BOUND"],
+          "description": "Section header in the /stx-help text. Hidden when zone=planned."
+        },
+        "lines": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "One or more terse one-liners shown under the slash name. First line is the summary; subsequent lines are continuation (indented) — typically used for --autonomous notes or planned-status notes."
+        }
+      }
+    },
+    "card": {
+      "type": "object",
+      "required": ["summary", "paragraph"],
+      "description": "Content for the /stx-help-html catalog card.",
+      "properties": {
+        "summary": {
+          "type": "string",
+          "description": "One sentence shown in the collapsed summary row."
+        },
+        "paragraph": {
+          "type": "string",
+          "description": "Opening paragraph inside the expanded card body."
+        },
+        "use_when": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Bullets for the green 'Use when' block."
+        },
+        "dontuse_when": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Bullets for the red 'Don't use when' block."
+        },
+        "invocations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["cmd"],
+            "properties": {
+              "comment": { "type": "string", "description": "Rendered as a # comment above the command." },
+              "cmd": { "type": "string", "description": "The invocation. May contain Markdown-style tokens: option text wrapped in <o>...</o>, string args in <s>...</s>." }
+            }
+          },
+          "description": "Code-block invocation examples."
+        },
+        "extras": {
+          "type": "array",
+          "description": "Ordered, optional content blocks rendered after the invocations.",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": ["kind", "title", "items"],
+                "properties": {
+                  "kind": { "const": "bullets" },
+                  "title": { "type": "string" },
+                  "items": { "type": "array", "items": { "type": "string" } }
+                }
+              },
+              {
+                "type": "object",
+                "required": ["kind", "title", "items"],
+                "properties": {
+                  "kind": { "const": "ordered" },
+                  "title": { "type": "string" },
+                  "items": { "type": "array", "items": { "type": "string" } }
+                }
+              },
+              {
+                "type": "object",
+                "required": ["kind", "title", "headers", "rows"],
+                "properties": {
+                  "kind": { "const": "table" },
+                  "title": { "type": "string" },
+                  "headers": { "type": "array", "items": { "type": "string" } },
+                  "rows": { "type": "array", "items": { "type": "array", "items": { "type": "string" } } }
+                }
+              },
+              {
+                "type": "object",
+                "required": ["kind", "html"],
+                "properties": {
+                  "kind": { "const": "callout" },
+                  "tone": { "enum": ["default", "teal", "gold"], "default": "default" },
+                  "html": { "type": "string", "description": "Raw HTML body of the callout. Trust-checked manually in PR review." }
+                }
+              },
+              {
+                "type": "object",
+                "required": ["kind", "title", "html"],
+                "properties": {
+                  "kind": { "const": "paragraph" },
+                  "title": { "type": "string" },
+                  "html": { "type": "string" }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

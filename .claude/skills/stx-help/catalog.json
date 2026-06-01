@@ -1,0 +1,28 @@
+{
+  "$schema": "../catalog.schema.json",
+  "name": "stx-help",
+  "slash": "/stx-help",
+  "version": "1.0.0",
+  "zone": "any",
+  "icon": "H",
+  "terminal": {
+    "group": "ANY-BOUND",
+    "lines": [
+      "This text help"
+    ]
+  },
+  "card": {
+    "summary": "Terse text-mode help. Lists every skill grouped by type with one-liners. Ends with a pointer to /stx-help-html.",
+    "paragraph": "Quick reference, in-terminal. Prints every skill name with a one-liner, grouped by type. Use this when you don't want to leave the terminal.",
+    "invocations": [
+      { "cmd": "/stx-help" }
+    ],
+    "extras": [
+      {
+        "kind": "paragraph",
+        "title": "Note",
+        "html": "No options. Output ends with a one-line pointer to <code>/stx-help-html</code> for the visual walkthrough."
+      }
+    ]
+  }
+}
