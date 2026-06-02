@@ -2,7 +2,7 @@
   "$schema": "../catalog.schema.json",
   "name": "stx-fix",
   "slash": "/stx-fix",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "zone": "main",
   "icon": "B",
   "terminal": {
@@ -13,8 +13,8 @@
     ]
   },
   "card": {
-    "summary": "Two-agent QA → Coder loop for a known bug. Failing test first, smallest change to make it pass. Personas live in <code>.claude/agents/</code>.",
-    "paragraph": "QA → Coder loop against one reproducible bug. Interview → render prompt → user acceptance → loop. The Coder cannot edit test files; touching them halts the loop.",
+    "summary": "Two-agent QA → Coder loop for a known bug. Failing test first, smallest change to make it pass. Writes a per-fix folder under <code>docs/waves/fix-{slug}/</code>. Personas live in <code>.claude/agents/</code>.",
+    "paragraph": "QA → Coder loop against one reproducible bug. Interview → render prompt → user acceptance → loop. The Coder cannot edit test files; touching them halts the loop. On close-out, writes a per-fix folder under <code>docs/waves/fix-{slug}/</code> containing <code>fix-report.html</code> (human-readable summary) and <code>fix-state.json</code> (machine-readable record), plus refreshes the cross-fix index at <code>docs/waves/fix-wiki.html</code>.",
     "use_when": [
       "Reproducible bug with concrete URL/state/steps",
       "You want failing test first, then minimal fix",
@@ -43,6 +43,15 @@
           ["test_kind", "radio", "playwright (UI) / vitest-unit (logic)"],
           ["iteration_cap", "number", "5"],
           ["commit_policy", "radio", "commit-after-green"]
+        ]
+      },
+      {
+        "kind": "bullets",
+        "title": "Artifacts produced (v1.3+)",
+        "items": [
+          "<code>docs/waves/fix-{slug}/fix-report.html</code> — per-fix human-readable report (one folder per fix, slug derived from the bug title)",
+          "<code>docs/waves/fix-{slug}/fix-state.json</code> — per-fix machine-readable state record (iteration count, halt reason, files touched, test outcomes)",
+          "<code>docs/waves/fix-wiki.html</code> — cross-fix index page linking every <code>fix-{slug}/</code> folder, regenerated on each close-out"
         ]
       },
       {

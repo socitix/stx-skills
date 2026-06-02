@@ -11,9 +11,18 @@
 
   IDEMPOTENT REBUILD. This file is NEVER hand-edited and NEVER appended-to in
   place. On every render the orchestrator re-scans every
-  docs/waves/*/wave-state.json and regenerates the whole table from scratch, so
-  a re-run, a --resume, or a manually added/removed wave directory always
-  self-heals to match reality. wave-state.json is canonical; this is presentation.
+  docs/waves/wave-*/wave-state.json and regenerates the whole table from
+  scratch, so a re-run, a --resume, or a manually added/removed wave directory
+  always self-heals to match reality. wave-state.json is canonical; this is
+  presentation.
+
+  SCOPE — WAVE FOLDERS ONLY. The scan glob is deliberately prefixed with
+  "wave-" so that sibling fix-*/ folders (written by /stx-fix into
+  docs/waves/fix-<slug>/) are intentionally excluded from this wiki. Fix
+  artifacts are aggregated separately into docs/waves/fix-wiki.html by the
+  /stx-fix skill. Keeping the two indexes apart prevents single-issue fix
+  rows from drowning out multi-feature wave rows, and lets each skill own
+  the rebuild of its own wiki without cross-contamination.
 
   Rows are sorted by started_at DESCENDING (most recent wave first). Every wave
   directory is listed regardless of status, so this doubles as a live dashboard.
@@ -24,7 +33,8 @@
     {{DONE_COUNT}}               count where status == done
     {{ACTIVE_COUNT}}             count where status in {planning,gate-1,gate-2,gate-3,dev-wave}
     {{HALTED_COUNT}}             count where status in {halted-at-cap,blocked}
-    {{#each waves}}              one row per docs/waves/*/wave-state.json, started_at DESC
+    {{#each waves}}              one row per docs/waves/wave-*/wave-state.json, started_at DESC
+                                 (fix-*/ folders are excluded — see fix-wiki.html)
       {{wave_id}}                wave-<slug>-<4char>  (also the directory name)
       {{wave_slug}}
       {{status}}                 planning | gate-1 | gate-2 | gate-3 | dev-wave | done | halted-at-cap | blocked

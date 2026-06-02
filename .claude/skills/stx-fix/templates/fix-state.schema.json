@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/socitix/stx-skills/stx-fix/fix-state.schema.json",
+  "title": "fix-state.json",
+  "description": "Canonical state for one /stx-fix run. The fix-report.html artifact is rendered from this file. This schema is the smaller, simpler sibling of stx-feature's wave-state.schema.json and follows the same conventions (JSON Schema 2020-12 dialect, top-level required[] array, enum + description per field).",
+  "type": "object",
+  "required": [
+    "fix_id",
+    "fix_slug",
+    "status",
+    "started_at",
+    "title",
+    "issues",
+    "repro",
+    "expected",
+    "test_kind",
+    "iteration_cap",
+    "commit_policy",
+    "iterations_used",
+    "tests_written",
+    "files_touched"
+  ],
+  "properties": {
+    "fix_id": {
+      "type": "string",
+      "description": "Format: fix-<slug>. Stable identifier for this fix run; also names the per-fix folder under docs/waves/<fix_id>/.",
+      "pattern": "^fix-[a-z0-9-]+$"
+    },
+    "fix_slug": {
+      "type": "string",
+      "description": "The short kebab-case slug portion of fix_id (without the leading 'fix-'). Used as the worktree directory and branch suffix when the user chose worktree_action == create-new.",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "status": {
+      "description": "Terminal state of the /stx-fix loop. 'done' = all issues green and §7 done-criteria satisfied. 'halted-at-cap' = soft- or hard-cap on iterations tripped before green. 'blocked' = a hard rule was violated (test-file edit, weakened assertion, mocked SUT, out-of-scope edit) and the orchestrator halted. 'cancelled' = user cancelled at the acceptance gate before Step 6, or asked the loop to stop mid-run.",
+      "enum": ["done", "halted-at-cap", "blocked", "cancelled"]
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp recorded when /stx-fix wrote the first version of fix-state.json (immediately after the user accepted the rendered prompt at Step 5)."
+    },
+    "finished_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO-8601 timestamp recorded when the loop terminated (any non-running status). Null only while the loop is mid-flight; every persisted fix-state.json at close-out has a finished_at."
+    },
+    "title": {
+      "type": "string",
+      "description": "Rendered from template field {{title}}. One-line short title for this fix; also becomes the PR title."
+    },
+    "issues": {
+      "type": "string",
+      "description": "Rendered from template field {{issues}}. Numbered list of distinct bug symptoms (markdown). Mirrors §1 of the rendered prompt."
+    },
+    "repro": {
+      "type": "string",
+      "description": "Rendered from template field {{repro}}. Concrete reproduction steps (URL, user/state, ordered steps). Mirrors §2 of the rendered prompt."
+    },
+    "expected": {
+      "type": "string",
+      "description": "Rendered from template field {{expected}}. Expected behaviour / acceptance criteria, one entry per numbered issue. Mirrors §3 of the rendered prompt."
+    },
+    "scope_hints": {
+      "type": "string",
+      "description": "Rendered from template field {{scope_hints}}. Suspected files / scope hints supplied by the user, or 'unknown — investigate.' Mirrors §4 of the rendered prompt. Optional in fix-state because the form field is optional."
+    },
+    "out_of_scope": {
+      "type": "string",
+      "description": "Rendered from template field {{out_of_scope}}. Hard guardrails declared up-front. Mirrors §4 of the rendered prompt. Optional in fix-state because the form field is optional."
+    },
+    "test_kind": {
+      "description": "Rendered from template field {{test_kind}}. Drives QA's authoring contract: playwright = browser-driven E2E; vitest-unit = unit/contract test; both = both kinds.",
+      "enum": ["playwright", "vitest-unit", "both"]
+    },
+    "iteration_cap": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Rendered from template field {{iteration_cap}}. Hard ceiling for the QA → Fix → QA loop (default 5)."
+    },
+    "commit_policy": {
+      "description": "Rendered from template field {{commit_policy}}. Declared intent for what happens after green. Forced to 'no-commit' when /stx-fix was invoked with --autonomous.",
+      "enum": ["no-commit", "commit-after-green", "commit-and-pr"]
+    },
+    "iterations_used": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of full QA → Coder → QA cycles actually consumed before the loop terminated. Compared against iteration_cap at halt time."
+    },
+    "tests_written": {
+      "type": "array",
+      "description": "Repo-relative paths of the failing test files authored by QA at the start of the loop. One entry per file (a single file may cover multiple numbered issues). Mirrors the per-task test_path shape in wave-state.schema.json.",
+      "items": { "type": "string" }
+    },
+    "files_touched": {
+      "type": "array",
+      "description": "Production files modified by the Coder across all iterations. Mirrors wave-state.schema.json's files_touched shape exactly: one row per file with line-add and line-del counters aggregated across iterations.",
+      "items": {
+        "type": "object",
+        "required": ["path", "add", "del"],
+        "properties": {
+          "path": { "type": "string", "description": "Repo-relative path of the touched file." },
+          "add": { "type": "integer", "minimum": 0, "description": "Lines added across all iterations." },
+          "del": { "type": "integer", "minimum": 0, "description": "Lines removed across all iterations." }
+        }
+      }
+    },
+    "autonomous": {
+      "type": "boolean",
+      "description": "True when /stx-fix was invoked with --autonomous. When true, the orchestrator auto-approved the Step 5 acceptance gate and forced commit_policy='no-commit'. Never bypasses destructive ops, hard-rule halts, or iteration caps."
+    },
+    "worktree_path": {
+      "type": "string",
+      "description": "Absolute path to the worktree this fix ran inside. Captured at Step 0 (Setup) so the report can show provenance."
+    },
+    "branch": {
+      "type": "string",
+      "description": "Git branch the fix was authored on (e.g. bugfix/<slug>). Captured at Step 0."
+    },
+    "use_browser_mcp": {
+      "type": "boolean",
+      "description": "Rendered from template field {{use_browser_mcp}}. True when the Coder was allowed to verify visually with Chrome Dev / Playwright MCP."
+    },
+    "halt_reason": {
+      "type": ["string", "null"],
+      "description": "When status != 'done', free-text one-paragraph explanation of why the loop halted. Examples: 'soft-cap hit on issue #2 after 3 attempts', 'Coder edited a test file at iteration 2', 'user cancelled at acceptance gate'. Null only when status == 'done'."
+    },
+    "handoff_doc": {
+      "type": ["string", "null"],
+      "description": "Repo-relative path of the docs/tasks/<slug>-handoff.md handoff doc written when an iteration cap trips. Null when no handoff was needed (status == 'done' or status == 'cancelled' before any iteration ran)."
+    }
+  }
+}

@@ -1580,13 +1580,13 @@
       <details class="skill" id="sk-stx-fix">
         <summary>
           <span class="ico">B</span>
-          <span class="nm">/stx-fix<span class="one">Two-agent QA → Coder loop for a known bug. Failing test first, smallest change to make it pass. Personas live in <code>.claude/agents/</code>.</span></span>
+          <span class="nm">/stx-fix<span class="one">Two-agent QA → Coder loop for a known bug. Failing test first, smallest change to make it pass. Writes a per-fix folder under <code>docs/waves/fix-{slug}/</code>. Personas live in <code>.claude/agents/</code>.</span></span>
           <span class="type type-main">main-bound</span>
-          <span class="ver">v1.2</span>
+          <span class="ver">v1.3</span>
           <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
         </summary>
         <div class="body">
-          <p>QA → Coder loop against one reproducible bug. Interview → render prompt → user acceptance → loop. The Coder cannot edit test files; touching them halts the loop.</p>
+          <p>QA → Coder loop against one reproducible bug. Interview → render prompt → user acceptance → loop. The Coder cannot edit test files; touching them halts the loop. On close-out, writes a per-fix folder under <code>docs/waves/fix-{slug}/</code> containing <code>fix-report.html</code> (human-readable summary) and <code>fix-state.json</code> (machine-readable record), plus refreshes the cross-fix index at <code>docs/waves/fix-wiki.html</code>.</p>
 
           <div class="blocks">
             <div class="block use"><div class="lbl">Use when</div><ul>
@@ -1624,6 +1624,13 @@
               <tr><td class="k">commit_policy</td><td>radio</td><td>commit-after-green</td></tr>
             </tbody>
           </table>
+
+          <h4>Artifacts produced (v1.3+)</h4>
+          <ul>
+            <li><code>docs/waves/fix-{slug}/fix-report.html</code> — per-fix human-readable report (one folder per fix, slug derived from the bug title)</li>
+            <li><code>docs/waves/fix-{slug}/fix-state.json</code> — per-fix machine-readable state record (iteration count, halt reason, files touched, test outcomes)</li>
+            <li><code>docs/waves/fix-wiki.html</code> — cross-fix index page linking every <code>fix-{slug}/</code> folder, regenerated on each close-out</li>
+          </ul>
 
           <h4>Halt conditions</h4>
           <ul>

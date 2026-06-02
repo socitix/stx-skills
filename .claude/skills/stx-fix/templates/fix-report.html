@@ -1,0 +1,191 @@
+<!doctype html>
+<!--
+================================================================================
+  fix-report.html — Per-fix summary template, written by the /stx-fix
+  orchestrator at loop close-out (Step 7).
+
+  Rendered from the final fix-state.json (see fix-state.schema.json in this
+  same folder). This is the per-fix analogue of /stx-feature's result.html:
+  same header, .wrap, .card, table conventions, same status-pill grammar.
+
+  All visual styling comes from the shared style block at
+  .claude/skills/stx-feature/templates/_styles.html, inlined here via the
+  {{INLINE_STYLES}} placeholder. Do NOT hand-inline a different stylesheet;
+  keep the look consistent with result.html and wave-wiki.html so fix and
+  wave artifacts read as one family.
+
+  PLACEHOLDERS:
+    {{INLINE_STYLES}}            inlined contents of _styles.html (full <style>…</style>)
+    {{FIX_ID}}                   e.g. fix-cancel-button-stuck
+    {{FIX_SLUG}}                 e.g. cancel-button-stuck (the slug part only)
+    {{TITLE}}                    one-line short title for this fix (from §0 of the rendered prompt)
+    {{STATUS}}                   done | halted-at-cap | blocked | cancelled
+    {{STARTED_AT}}               ISO-8601 timestamp
+    {{FINISHED_AT}}              ISO-8601 timestamp (or "—" if still mid-flight)
+    {{ITERATIONS_USED}}          integer, actual cycles consumed
+    {{ITERATION_CAP}}            integer, configured ceiling
+    {{TEST_KIND}}                playwright | vitest-unit | both
+    {{COMMIT_POLICY}}            no-commit | commit-after-green | commit-and-pr
+    {{AUTONOMOUS}}               true | false (rendered as text)
+    {{WORKTREE_PATH}}            absolute worktree path
+    {{BRANCH}}                   git branch
+    {{USE_BROWSER_MCP}}          true | false (rendered as text)
+    {{HALT_REASON}}              one-paragraph explanation when status != "done"; empty when done
+    {{HANDOFF_DOC}}              repo-relative path to docs/tasks/<slug>-handoff.md, or "—"
+    {{REPRO}}                    markdown reproduction steps (mirrors §2 of prompt)
+    {{EXPECTED}}                 markdown expected behaviour (mirrors §3 of prompt)
+    {{SCOPE_HINTS}}              suspected files / scope hints (or "unknown — investigate.")
+    {{OUT_OF_SCOPE}}             declared guardrails (or "—")
+    {{NEXT_ACTION}}              one-line recommendation for the user
+
+    {{#each issues}}             §1 Issues table — one row per numbered bug symptom
+      {{n}}                      issue number (1, 2, 3 …)
+      {{summary}}                short symptom line
+      {{status}}                 green | red | unresolved   (renders status-{{status}} pill)
+      {{fix_files}}              comma-separated list of files that contained the fix (or "—")
+      {{notes}}                  one short line of what changed (or empty)
+    {{/each}}
+
+    {{#each tests_written}}      §2 Tests written by QA at the start of the loop
+      {{path}}                   repo-relative test file path
+      {{covers}}                 e.g. "issues #1, #2" (or empty)
+    {{/each}}
+
+    {{#each files_touched}}      §3 Production files modified by the Coder
+      {{path}}                   repo-relative path
+      {{add}}                    lines added across all iterations
+      {{del}}                    lines deleted across all iterations
+    {{/each}}
+
+  Status-pill classes referenced (must match _styles.html):
+    .status-done            green   — loop ended green, all issues fixed
+    .status-halted-at-cap   red     — soft/hard iteration cap tripped before green
+    .status-blocked         red     — hard-rule violation halted the loop
+    .status-cancelled       muted   — user cancelled at the acceptance gate (or mid-run)
+================================================================================
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fix Report — {{FIX_ID}}</title>
+{{INLINE_STYLES}}
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Fix artifact · written by /stx-fix at loop close-out</div>
+    <h1>Fix Report</h1>
+    <div class="meta">
+      <code>{{FIX_ID}}</code> · slug <code>{{FIX_SLUG}}</code> · status <code>{{STATUS}}</code><br>
+      started <code>{{STARTED_AT}}</code> · finished <code>{{FINISHED_AT}}</code> · iterations <code>{{ITERATIONS_USED}}</code> / <code>{{ITERATION_CAP}}</code> · test kind <code>{{TEST_KIND}}</code>
+    </div>
+  </header>
+
+  <h2><span class="num">§0</span> Status overview</h2>
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <span class="card-id">{{FIX_ID}}</span>
+        <h3 class="card-title" style="margin-top:4px">{{TITLE}}</h3>
+      </div>
+      <span class="status status-{{STATUS}}">{{STATUS}}</span>
+    </div>
+    <div class="meta-row">
+      <span><strong>Commit policy:</strong> <code>{{COMMIT_POLICY}}</code></span>
+      <span><strong>Autonomous:</strong> <code>{{AUTONOMOUS}}</code></span>
+      <span><strong>Browser MCP:</strong> <code>{{USE_BROWSER_MCP}}</code></span>
+      <span><strong>Branch:</strong> <code>{{BRANCH}}</code></span>
+    </div>
+    <div class="meta-row">
+      <span><strong>Worktree:</strong> <code>{{WORKTREE_PATH}}</code></span>
+    </div>
+    <p><strong>Next action awaiting user:</strong> {{NEXT_ACTION}}</p>
+  </div>
+
+  <h2><span class="num">§1</span> Issues</h2>
+  <p>One row per distinct bug symptom from §1 of the rendered prompt. Status reflects whether the failing test for that issue ended the loop green.</p>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:50px">#</th>
+        <th>Summary</th>
+        <th style="width:110px">Status</th>
+        <th>Fix file(s)</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each issues}}
+      <tr>
+        <td><code>{{n}}</code></td>
+        <td>{{summary}}</td>
+        <td><span class="status status-{{status}}">{{status}}</span></td>
+        <td style="font-size:13px;color:var(--muted)"><code>{{fix_files}}</code></td>
+        <td style="font-size:13px;color:var(--muted)">{{notes}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <h2><span class="num">§2</span> Tests written</h2>
+  <p>Failing tests authored by QA at the start of the loop (one entry per file; a single file may cover multiple numbered issues).</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Path</th>
+        <th style="width:200px">Covers</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each tests_written}}
+      <tr>
+        <td><code>{{path}}</code></td>
+        <td style="font-size:13px;color:var(--muted)">{{covers}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <h2><span class="num">§3</span> Files touched</h2>
+  <p>Production files modified by the Coder across all iterations (test files are excluded — they are listed in §2).</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Path</th>
+        <th style="width:80px">+lines</th>
+        <th style="width:80px">−lines</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each files_touched}}
+      <tr>
+        <td><code>{{path}}</code></td>
+        <td style="color:var(--green)">+{{add}}</td>
+        <td style="color:var(--red)">−{{del}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <h2><span class="num">§4</span> Iterations &amp; halt reason</h2>
+  <div class="card">
+    <p><strong>Iterations used:</strong> <code>{{ITERATIONS_USED}}</code> / <code>{{ITERATION_CAP}}</code></p>
+    <p><strong>Halt reason:</strong> {{HALT_REASON}}</p>
+    <p><strong>Handoff doc:</strong> <code>{{HANDOFF_DOC}}</code></p>
+  </div>
+
+  <h2><span class="num">§5</span> Reproduction &amp; expected behaviour</h2>
+  <div class="card">
+    <h3>Repro</h3>
+    <p>{{REPRO}}</p>
+    <h3>Expected</h3>
+    <p>{{EXPECTED}}</p>
+    <h3>Scope hints</h3>
+    <p>{{SCOPE_HINTS}}</p>
+    <h3>Out of scope</h3>
+    <p>{{OUT_OF_SCOPE}}</p>
+  </div>
+</div>
+</body>
+</html>

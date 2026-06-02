@@ -1,0 +1,857 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Architecture Verse — wave-fix-report-in-waves-acac</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --panel: #ffffff;
+    --text: #111827;
+    --muted: #6b7280;
+    --hairline: #e5e7eb;
+    --hairline-strong: #d1d5db;
+    --teal: #14b8a6;
+    --teal-dark: #0f766e;
+    --amber: #d97706;
+    --amber-soft: #fef3c7;
+    --red: #b91c1c;
+    --red-bg: #fee2e2;
+    --green: #047857;
+    --green-bg: #dcfce7;
+    --code-bg: #0f172a;
+    --code-text: #e2e8f0;
+    --tier-db: #7c3aed;
+    --tier-service: #0891b2;
+    --tier-api: #d97706;
+    --tier-ui: #db2777;
+  }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    line-height: 1.55;
+    font-size: 15px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 56px 28px 96px; }
+  header { border-bottom: 1px solid var(--hairline); padding-bottom: 28px; margin-bottom: 36px; }
+  header .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  header h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 500;
+    font-size: 38px;
+    line-height: 1.15;
+    margin: 8px 0 12px;
+    letter-spacing: -0.01em;
+  }
+  header .meta { color: var(--muted); font-size: 14px; }
+  header .meta code, .badge code {
+    background: #fff;
+    padding: 2px 6px;
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  h2 {
+    font-family: Georgia, serif;
+    font-weight: 500;
+    font-size: 24px;
+    margin: 48px 0 14px;
+  }
+  h2 .num {
+    color: var(--teal);
+    margin-right: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  h3 { font-size: 16px; margin: 24px 0 8px; font-weight: 600; }
+  p { margin: 0 0 14px; }
+  a { color: var(--teal-dark); }
+  code, pre, kbd { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  code { background: #fff; border: 1px solid var(--hairline); border-radius: 4px; padding: 1px 5px; font-size: 13px; }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 14px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  ul, ol { padding-left: 22px; margin: 0 0 14px; }
+  li { margin-bottom: 6px; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin-bottom: 18px;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .card-title {
+    font-family: Georgia, serif;
+    font-size: 19px;
+    font-weight: 500;
+    margin: 0;
+  }
+  .card-id {
+    color: var(--muted);
+    font-family: ui-monospace, monospace;
+    font-size: 12.5px;
+  }
+
+  .tier {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #fff;
+  }
+  .tier-db { background: var(--tier-db); }
+  .tier-service { background: var(--tier-service); }
+  .tier-api { background: var(--tier-api); }
+  .tier-ui { background: var(--tier-ui); }
+
+  .status {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+  .status-todo { background: var(--hairline); color: var(--text); }
+  .status-in-progress { background: var(--amber-soft); color: var(--amber); }
+  .status-done { background: var(--green-bg); color: var(--green); }
+  .status-halted { background: var(--red-bg); color: var(--red); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+  th, td {
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--hairline);
+    vertical-align: top;
+  }
+  th {
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 11.5px;
+  }
+  tr:last-child td { border-bottom: none; }
+
+  .note {
+    background: var(--amber-soft);
+    border-left: 3px solid var(--amber);
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+  .danger {
+    background: var(--red-bg);
+    border-left: 3px solid var(--red);
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+  .scope-paths { font-family: ui-monospace, monospace; font-size: 12.5px; color: var(--muted); }
+  .scope-paths li { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Wave artifact · written by Agent 2 (Architect)</div>
+    <h1>Architecture Verse</h1>
+    <div class="meta">
+      <code>wave-fix-report-in-waves-acac</code> · slug <code>fix-report-in-waves</code> · generated <code>2026-06-02T00:10:00Z</code>
+    </div>
+  </header>
+
+  <h2><span class="num">§1</span> Frozen out-of-scope (wave-level)</h2>
+  <div class="danger">
+    After Gate 2 closes, anything below is off-limits. Dev agents may NOT touch these areas regardless of how convenient a "while I'm here" change would be. Violations are logged to <code>suspicious[]</code> in wave-state.json.
+  </div>
+  <ul>
+    <li>Random-suffix or timestamp-suffix on the fix folder name — the name is literally <code>fix-{slug}/</code>.</li>
+    <li>A <code>--report</code> / <code>--no-report</code> flag on <code>/stx-fix</code> — artifact write is unconditional.</li>
+    <li>A prompt-snapshot file inside <code>fix-{slug}/</code> — exactly two files (<code>fix-report.html</code>, <code>fix-state.json</code>).</li>
+    <li>Changes to the QA → Coder loop semantics, iteration caps, halt conditions, or the Coder's test-file prohibition.</li>
+    <li>Mid-loop streaming of <code>fix-report.html</code> as a live dashboard. Write at fix-end (or halt).</li>
+    <li>Extending <code>wave-wiki.html</code> to include fix-*/ rows. <code>fix-wiki.html</code> is a separate sibling.</li>
+    <li>Filters, search, sort controls, RSS feeds, or APIs on either wiki.</li>
+    <li>Any change to the repo-root <code>README.md</code>.</li>
+    <li>Any change to the wave-template-doc-prose beyond the bare minimum F2-T4 requires.</li>
+    <li>Hand-editing the <code>BEGIN AUTO</code> / <code>END AUTO</code> regions of generated files.</li>
+    <li>Bumping any other skill's version beyond <code>stx-fix</code> (and its two persona files, which get additive bumps in F1-T3 / F1-T4).</li>
+    <li>Bumping the repo-root <code>package.json</code> version — see Architect decision Q6 below.</li>
+  </ul>
+
+  <h2><span class="num">§2</span> Architect decisions on open questions</h2>
+  <p>The Analyst surfaced 6 implementation questions. The Architect resolved each from existing patterns + best judgment. The answers below freeze the implementation direction for the wave.</p>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <span class="card-id">Q1</span>
+        <h3 class="card-title" style="margin-top:4px">Collision handling when <code>docs/waves/fix-{slug}/</code> already exists</h3>
+      </div>
+    </div>
+    <p><strong>Decision:</strong> Halt + <code>AskUserQuestion</code> with three options: <em>(a)</em> overwrite the existing folder, <em>(b)</em> append a numeric suffix <code>-2</code>, <code>-3</code>, … (the suffixed name is a one-off escape hatch, NOT the default name shape), <em>(c)</em> cancel and write nothing. <strong>Default option: cancel.</strong></p>
+    <p><strong>Why:</strong> matches the worktree-on-main decision tree in <code>.claude/skills/stx-fix/SKILL.md:80-82</code> — a three-options-with-defaults pattern the user has already seen and approved. Silent overwrite violates the data-protection rule in <code>~/.claude/CLAUDE.md</code>; auto-suffixing violates F1's "literally fix-{slug}" rule. The cancel default is the safest behaviour for a fix that's about to overwrite history.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <span class="card-id">Q2</span>
+        <h3 class="card-title" style="margin-top:4px">Persona reporting contract: structured fields vs. scraping freeform output</h3>
+      </div>
+    </div>
+    <p><strong>Decision:</strong> Extend <code>stx-qa.md</code> and <code>stx-coder.md</code> (additive minor bump 1.0.0 → 1.1.0 on both) to require a structured hand-back block at the bottom of every report. QA emits <code>tests_written: [path, ...]</code>; Coder emits <code>files_touched: [{path, add, del}, ...]</code>. The existing freeform fields stay; the structured block is appended.</p>
+    <p><strong>Why:</strong> scraping freeform output is fragile — the agents are LLMs and their prose shape drifts. A structured trailer is two extra lines per hand-back and lets the orchestrator parse the values directly into <code>fix-state.json</code>. This mirrors the well-defined hand-back shape that <code>stx-dev-base</code> already uses in the /stx-feature wave (every Dev produces a path-line list at hand-back). F1-T3 and F1-T4 implement.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <span class="card-id">Q3</span>
+        <h3 class="card-title" style="margin-top:4px">Renderer location: TypeScript module, embedded string, or sibling template directory</h3>
+      </div>
+    </div>
+    <p><strong>Decision:</strong> Templates live at <code>.claude/skills/stx-fix/templates/fix-report.html</code> and <code>.claude/skills/stx-fix/templates/fix-wiki.html</code>, mirroring <code>.claude/skills/stx-feature/templates/</code> exactly. The orchestrator (the LLM running /stx-fix) renders by reading the template and substituting placeholders inline — same pattern <code>/stx-feature</code> already uses for <code>result.html</code> and <code>wave-wiki.html</code>. <strong>No new TypeScript module under <code>src/skills/</code>.</strong></p>
+    <p><strong>Why:</strong> consistency. <code>/stx-feature</code> renders four HTML artifacts (requirement-verse, architecture-verse, qa-verse, result) by reading <code>.claude/skills/stx-feature/templates/*.html</code> and substituting placeholders — there is no TypeScript renderer for any of them. A TS module for /stx-fix would be a different abstraction in the same repo for the same shape of work. The Markdown / JSON / HTML-template trio is the project's established skill-authoring surface (see CLAUDE.md). Also: a TS module would force a <code>package.json</code> bump (Q6) for net-zero capability.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <span class="card-id">Q4</span>
+        <h3 class="card-title" style="margin-top:4px">State-flush timing: only at fix-end, or also per-iteration</h3>
+      </div>
+    </div>
+    <p><strong>Decision:</strong> Write <code>fix-state.json</code> ONCE — at fix-end (status <code>done</code>) or at halt (status <code>halted-at-cap</code> / <code>blocked</code> / <code>cancelled</code>). No per-iteration flush. The orchestrator holds the in-progress state in memory.</p>
+    <p><strong>Why:</strong> matches <code>wave-state.json</code>'s lifecycle in /stx-feature — wave-state is the canonical model that is written at gate boundaries and at wave end, not per-iteration. Mid-loop flushing adds complexity (atomic-write needed, schema must tolerate every partial state) for a capability the user explicitly placed out-of-scope: <em>"Mid-loop streaming of fix-report.html as a live dashboard."</em> If a crash recovery becomes important later, that's a separate Feature.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <span class="card-id">Q5</span>
+        <h3 class="card-title" style="margin-top:4px">Wiki-render code sharing: extract a helper, or duplicate</h3>
+      </div>
+    </div>
+    <p><strong>Decision:</strong> Neither — there is no code path to share. Both wave-wiki and fix-wiki are rendered by the orchestrator (the LLM) inline by reading their template files. The "tightening" of the wave-wiki scan glob is a one-line documentation update inside <code>.claude/skills/stx-feature/templates/wave-wiki.html</code>'s comment block + the matching one-line update in <code>.claude/skills/stx-feature/SKILL.md</code> Step 3 sub-bullet and <code>template.md</code>'s rebuild description. <strong>No code extraction is possible because there is no code.</strong></p>
+    <p><strong>Why:</strong> the original Analyst question presumed a TypeScript renderer existed. <code>git grep</code> confirms otherwise — <code>src/cli/generate-help.ts</code> is the only generator in the repo, and it's for /stx-help (not waves). The wave-wiki render is performed by the LLM. F2-T2 changes the scan-glob documentation; F2-T4 propagates the same change to the orchestrator instructions in stx-feature/SKILL.md + template.md.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <span class="card-id">Q6</span>
+        <h3 class="card-title" style="margin-top:4px"><code>package.json</code> bump: needed or not</h3>
+      </div>
+    </div>
+    <p><strong>Decision:</strong> No bump. This wave touches no code under <code>src/</code>. Per CLAUDE.md's versioning section: <em>"Bump the package version when the installer, generator, or shipped CLIs change."</em> None of those change here. The repo-root <code>package.json</code> stays at <code>1.10.1</code>.</p>
+    <p><strong>Why:</strong> a consequence of Q3 (no new TS code) and Q5 (no code extraction). The skill version (<code>stx-fix</code>) bumps 1.2.0 → 1.3.0 in F3-T1 / F3-T2 — that's the right granularity for a behaviour change inside one skill. The package version is for the installer/CLI surface, which is unchanged.</p>
+  </div>
+
+  <h2><span class="num">§3</span> Existing patterns to follow (per Feature)</h2>
+  <p>Architect's pattern citations — the implementation must mirror these, not invent new ones.</p>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <span class="card-id">F1</span>
+        <h3 class="card-title" style="margin-top:4px">Per-fix folder with fix-report.html + fix-state.json</h3>
+      </div>
+    </div>
+    <ul>
+      <li><strong>Schema shape:</strong> mirror <code>.claude/skills/stx-feature/templates/wave-state.schema.json</code> (the per-wave JSON schema). <code>fix-state.schema.json</code> is a smaller sibling — same dialect, same required[] convention, same enum-with-description style.</li>
+      <li><strong>HTML template shape:</strong> mirror <code>.claude/skills/stx-feature/templates/result.html</code> — same <code>{{INLINE_STYLES}}</code> pattern at line 75, same header / .wrap / .card structure, same status-pill classes. <code>fix-report.html</code> is the per-fix analogue of <code>result.html</code>.</li>
+      <li><strong>Render-from-template pattern:</strong> mirror <code>.claude/skills/stx-feature/SKILL.md:300-318</code> (the wave's Final orchestrator step). Same procedural sub-bullet style: update state.json → render report.html → rebuild wiki → surface.</li>
+      <li><strong>Collision-handling pattern:</strong> mirror the three-option <code>AskUserQuestion</code> shape at <code>.claude/skills/stx-fix/SKILL.md:80-82</code> (the worktree-on-main decision).</li>
+      <li><strong>Persona hand-back pattern:</strong> mirror <code>.claude/agents/stx-qa.md:84-89</code>'s reporting list for the new structured-output addendum in F1-T3 / F1-T4.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <span class="card-id">F2</span>
+        <h3 class="card-title" style="margin-top:4px">fix-wiki.html + wave-wiki tightening</h3>
+      </div>
+    </div>
+    <ul>
+      <li><strong>Wiki template shape:</strong> clone <code>.claude/skills/stx-feature/templates/wave-wiki.html</code> structurally. Same head, same .wrap, same single-table, same <code>{{#each waves}}</code>-style placeholder grammar. Differentiate only the eyebrow text, H1, and lede paragraph.</li>
+      <li><strong>Rebuild instruction shape:</strong> mirror <code>.claude/skills/stx-feature/SKILL.md:312-317</code> — sub-bulleted procedure for scan → read → sort → render. F2-T3 lifts this paragraph and rewrites it for fix-wiki.</li>
+      <li><strong>Documentation-only scan-glob change:</strong> mirror the comment-block style at <code>.claude/skills/stx-feature/templates/wave-wiki.html:1-40</code> — the glob lives only in the comment block + the orchestrator instructions; there is no compiled scan path to update.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <span class="card-id">F3</span>
+        <h3 class="card-title" style="margin-top:4px">Standard skill-change doc cycle</h3>
+      </div>
+    </div>
+    <ul>
+      <li><strong>Version-bump pattern:</strong> follow the precedent set by the 1.1.0 → 1.2.0 bump of stx-fix when <code>--autonomous</code> was added (commit <code>1d944e6</code>). New artifact behaviour = minor bump, not patch.</li>
+      <li><strong>Catalog edit pattern:</strong> mirror existing well-shaped catalogs (e.g. <code>.claude/skills/stx-feature/catalog.json</code>'s extras for the artifact list, or <code>.claude/skills/stx-checkin/catalog.json</code>'s simple bullets). Pick the simplest <code>kind</code> that fits — <code>bullets</code> is right for the artifact list.</li>
+      <li><strong>Build pipeline:</strong> <code>npm run build</code> = <code>tsc &amp;&amp; node dist/cli/generate-help.js</code> per <code>package.json</code>. F3-T4 runs it; do NOT modify <code>src/cli/generate-help.ts</code> itself — the regen logic is unchanged.</li>
+      <li><strong>Check-docs gate:</strong> <code>npm run check-docs</code> per CLAUDE.md is the canonical pre-commit gate. F3-T5 verifies it exits 0.</li>
+    </ul>
+  </div>
+
+  <h2><span class="num">§4</span> Features and Tasks</h2>
+  <p>Each Feature decomposes into one or more Tasks. Each Task is tier-tagged, declares the files it may touch (<code>scope_paths</code>), and points to existing patterns it must mirror. Detailed scope/hint/patterns per task open inside each row.</p>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <span class="card-id">F1</span>
+        <h3 class="card-title" style="margin-top:4px">/stx-fix writes a per-fix folder with fix-report.html and fix-state.json</h3>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:80px">Task</th>
+          <th style="width:80px">Tier</th>
+          <th>Title</th>
+          <th style="width:120px">Depends on</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>F1-T1</code></td>
+          <td><span class="tier tier-service">service</span></td>
+          <td>
+            <strong>Author fix-state.schema.json describing the canonical fix-state.json shape</strong>
+            <div style="margin-top:8px">
+              <details>
+                <summary style="cursor:pointer;color:var(--muted);font-size:13px">scope_paths · acceptance hint · patterns</summary>
+                <div style="margin-top:10px">
+                  <strong style="font-size:12.5px;color:var(--muted)">SCOPE PATHS</strong>
+                  <ul class="scope-paths">
+                    <li><code>.claude/skills/stx-fix/templates/fix-state.schema.json</code></li>
+                  </ul>
+                  <strong style="font-size:12.5px;color:var(--muted)">ACCEPTANCE TEST HINT (for QA)</strong>
+                  <p>QA writes a vitest-unit test that parses the schema with a minimal-import JSON-schema validator (or hand-rolled structural check) and confirms every field listed in F1 acceptance-criterion #4 (fix_id, fix_slug, status enum [done|halted-at-cap|blocked|cancelled], started_at, finished_at, the rendered template fields, iteration count, tests_written[], files_touched[]) is required-or-optional as documented and that status enum is exhaustive.</p>
+                  <strong style="font-size:12.5px;color:var(--muted)">EXISTING PATTERNS TO FOLLOW</strong>
+                  <ul>
+                    <li>Mirror the shape of <code>.claude/skills/stx-feature/templates/wave-state.schema.json</code> exactly — same $schema dialect, same top-level required[] array convention, same use of enum + description per field.</li>
+                    <li>Reuse field descriptions for <code>started_at</code>, <code>finished_at</code>, <code>status</code> from wave-state.schema.json verbatim where the semantics match.</li>
+                    <li>For <code>tests_written</code> and <code>files_touched</code>, mirror the wave-state.json's per-task <code>test_path</code> (string) and files-touched ({path,add,del}) shapes.</li>
+                  </ul>
+                </div>
+              </details>
+            </div>
+          </td>
+          <td><code>—</code></td>
+        </tr>
+        <tr>
+          <td><code>F1-T2</code></td>
+          <td><span class="tier tier-ui">ui</span></td>
+          <td>
+            <strong>Author fix-report.html template with placeholders for the rendered fix</strong>
+            <div style="margin-top:8px">
+              <details>
+                <summary style="cursor:pointer;color:var(--muted);font-size:13px">scope_paths · acceptance hint · patterns</summary>
+                <div style="margin-top:10px">
+                  <strong style="font-size:12.5px;color:var(--muted)">SCOPE PATHS</strong>
+                  <ul class="scope-paths">
+                    <li><code>.claude/skills/stx-fix/templates/fix-report.html</code></li>
+                  </ul>
+                  <strong style="font-size:12.5px;color:var(--muted)">ACCEPTANCE TEST HINT (for QA)</strong>
+                  <p>QA writes a Playwright test that loads a sample-rendered fix-report.html (with all placeholders substituted with fixture data) and asserts: (1) the page renders without JS errors, (2) the header h1 reads "Fix Report", (3) a status pill renders with the right colour class for each of done/halted-at-cap/blocked/cancelled, (4) the Issues table has one row per issue, (5) the tests_written list is rendered, (6) the files_touched list is rendered. The INLINE_STYLES block must come from _styles.html-equivalent tokens; the test asserts no literal {{}} placeholder survives in the rendered output.</p>
+                  <strong style="font-size:12.5px;color:var(--muted)">EXISTING PATTERNS TO FOLLOW</strong>
+                  <ul>
+                    <li>Mirror the structure of <code>.claude/skills/stx-feature/templates/result.html:70-237</code> — same header / .wrap / .card / table conventions.</li>
+                    <li>Copy the INLINE_STYLES block from <code>.claude/skills/stx-feature/templates/_styles.html</code> verbatim into a <code>{{INLINE_STYLES}}</code> placeholder, matching the pattern in <code>result.html:75</code> and <code>wave-wiki.html:46</code>.</li>
+                    <li>Reuse the same status-pill classes (<code>status-done</code>, <code>status-halted-at-cap</code>, <code>status-blocked</code>).</li>
+                    <li>Reuse the placeholder syntax from <code>result.html</code> — <code>{{FIELD}}</code> for scalars, <code>{{#each items}} … {{/each}}</code> for arrays.</li>
+                    <li>Document every placeholder in a top-of-file comment block — same shape as <code>result.html:1-69</code> and <code>architecture-verse.html:1-37</code>.</li>
+                  </ul>
+                </div>
+              </details>
+            </div>
+          </td>
+          <td><code>F1-T1</code></td>
+        </tr>
+        <tr>
+          <td><code>F1-T3</code></td>
+          <td><span class="tier tier-service">service</span></td>
+          <td>
+            <strong>Extend stx-qa.md hand-back contract to surface tests_written[] as structured output</strong>
+            <div style="margin-top:8px">
+              <details>
+                <summary style="cursor:pointer;color:var(--muted);font-size:13px">scope_paths · acceptance hint · patterns</summary>
+                <div style="margin-top:10px">
+                  <strong style="font-size:12.5px;color:var(--muted)">SCOPE PATHS</strong>
+                  <ul class="scope-paths">
+                    <li><code>.claude/agents/stx-qa.md</code></li>
+                  </ul>
+                  <strong style="font-size:12.5px;color:var(--muted)">ACCEPTANCE TEST HINT (for QA)</strong>
+                  <p>QA writes a vitest-unit test that loads .claude/agents/stx-qa.md, checks the frontmatter version was bumped (1.0.0 → 1.1.0), and asserts the file contains a new sub-section under "Authoring contract (stx-fix)" that names the structured hand-back fields (tests_written, test_paths_per_issue) and states the schema. The test also asserts no existing rule in stx-qa.md was removed.</p>
+                  <strong style="font-size:12.5px;color:var(--muted)">EXISTING PATTERNS TO FOLLOW</strong>
+                  <ul>
+                    <li>Mirror the additive style of <code>.claude/agents/stx-qa.md:46-54</code> — add a "Hand-back format (stx-fix)" subsection AFTER the existing steps without renumbering them.</li>
+                    <li>Use the same Markdown heading depth and bullet style as the surrounding sections.</li>
+                    <li>Bump <code>version: 1.0.0</code> → <code>version: 1.1.0</code> — additive contract change is a minor bump.</li>
+                  </ul>
+                </div>
+              </details>
+            </div>
+          </td>
+          <td><code>—</code></td>
+        </tr>
+        <tr>
+          <td><code>F1-T4</code></td>
+          <td><span class="tier tier-service">service</span></td>
+          <td>
+            <strong>Extend stx-coder.md hand-back contract to surface files_touched[] as structured output</strong>
+            <div style="margin-top:8px">
+              <details>
+                <summary style="cursor:pointer;color:var(--muted);font-size:13px">scope_paths · acceptance hint · patterns</summary>
+                <div style="margin-top:10px">
+                  <strong style="font-size:12.5px;color:var(--muted)">SCOPE PATHS</strong>
+                  <ul class="scope-paths">
+                    <li><code>.claude/agents/stx-coder.md</code></li>
+                  </ul>
+                  <strong style="font-size:12.5px;color:var(--muted)">ACCEPTANCE TEST HINT (for QA)</strong>
+                  <p>QA writes a vitest-unit test that loads .claude/agents/stx-coder.md, checks the frontmatter version was bumped (1.0.0 → 1.1.0), and asserts the file's "When you finish" section now requires the Coder to emit a structured files_touched[] block (path + lines-added + lines-removed) in addition to the existing freeform fields. The test also asserts the hard-rules section is unchanged.</p>
+                  <strong style="font-size:12.5px;color:var(--muted)">EXISTING PATTERNS TO FOLLOW</strong>
+                  <ul>
+                    <li>Modify only <code>.claude/agents/stx-coder.md:51-58</code> ("When you finish") — append a structured-output addendum, do not rewrite the existing five bullets.</li>
+                    <li>Mirror the bullet-then-format style of <code>.claude/agents/stx-qa.md:84-89</code>.</li>
+                    <li>Bump frontmatter version 1.0.0 → 1.1.0 to match stx-qa.md's bump.</li>
+                  </ul>
+                </div>
+              </details>
+            </div>
+          </td>
+          <td><code>—</code></td>
+        </tr>
+        <tr>
+          <td><code>F1-T5</code></td>
+          <td><span class="tier tier-service">service</span></td>
+          <td>
+            <strong>Update stx-fix/SKILL.md Step 6/7 with artifact-write instructions + collision handling</strong>
+            <div style="margin-top:8px">
+              <details>
+                <summary style="cursor:pointer;color:var(--muted);font-size:13px">scope_paths · acceptance hint · patterns</summary>
+                <div style="margin-top:10px">
+                  <strong style="font-size:12.5px;color:var(--muted)">SCOPE PATHS</strong>
+                  <ul class="scope-paths">
+                    <li><code>.claude/skills/stx-fix/SKILL.md</code></li>
+                  </ul>
+                  <strong style="font-size:12.5px;color:var(--muted)">ACCEPTANCE TEST HINT (for QA)</strong>
+                  <p>QA writes a vitest-unit test that loads stx-fix/SKILL.md and asserts: (1) Step 6 references the persona hand-back format change (orchestrator must collect tests_written[] from QA and files_touched[] from Coder), (2) Step 7 contains a new sub-section describing the docs/waves/fix-{slug}/ folder write and the rendering procedure, (3) Step 7 documents the collision-handling behaviour (halt + AskUserQuestion with three options, default cancel), (4) the file references the new template paths fix-report.html and fix-state.schema.json, (5) the frontmatter version is unchanged in this task (F3-T1 bumps it).</p>
+                  <strong style="font-size:12.5px;color:var(--muted)">EXISTING PATTERNS TO FOLLOW</strong>
+                  <ul>
+                    <li>Mirror the rendering instruction style of <code>.claude/skills/stx-feature/SKILL.md:300-318</code>.</li>
+                    <li>Mirror the collision-handling AskUserQuestion idiom from <code>.claude/skills/stx-fix/SKILL.md:80-82</code>.</li>
+                    <li>Keep Step 7 (Done or halted) intact at its current numbering; ADD subsections, do NOT renumber the existing seven steps.</li>
+                  </ul>
+                </div>
+              </details>
+            </div>
+          </td>
+          <td><code>F1-T1, F1-T2, F1-T3, F1-T4</code></td>
+        </tr>
+        <tr>
+          <td><code>F1-T6</code></td>
+          <td><span class="tier tier-service">service</span></td>
+          <td>
+            <strong>Update stx-fix/template.md §9 (Reporting back to user) with artifact write + new last line</strong>
+            <div style="margin-top:8px">
+              <details>
+                <summary style="cursor:pointer;color:var(--muted);font-size:13px">scope_paths · acceptance hint · patterns</summary>
+                <div style="margin-top:10px">
+                  <strong style="font-size:12.5px;color:var(--muted)">SCOPE PATHS</strong>
+                  <ul class="scope-paths">
+                    <li><code>.claude/skills/stx-fix/template.md</code></li>
+                  </ul>
+                  <strong style="font-size:12.5px;color:var(--muted)">ACCEPTANCE TEST HINT (for QA)</strong>
+                  <p>QA writes a vitest-unit test that loads stx-fix/template.md and asserts: (1) §9 "Reporting back to the user" includes a new bullet describing the docs/waves/fix-{slug}/ artifact write that happens BEFORE the terminal summary, (2) the new last-line literal "Report written to &lt;abs-path-to-fix-report.html&gt;" is documented in §9, (3) the existing five-point bullet list is preserved verbatim, (4) the FORM_FIELDS block at the top is unchanged.</p>
+                  <strong style="font-size:12.5px;color:var(--muted)">EXISTING PATTERNS TO FOLLOW</strong>
+                  <ul>
+                    <li>Modify only <code>.claude/skills/stx-fix/template.md:279-289</code> (§9) — prepend the artifact-write line, append the new last-line.</li>
+                    <li>Use placeholder syntax consistent with the rest of template.md.</li>
+                    <li>Do NOT touch the FORM_FIELDS YAML block (lines 29-122).</li>
+                  </ul>
+                </div>
+              </details>
+            </div>
+          </td>
+          <td><code>F1-T5</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <span class="card-id">F2</span>
+        <h3 class="card-title" style="margin-top:4px">fix-wiki.html cross-fix index (sibling of wave-wiki.html)</h3>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:80px">Task</th>
+          <th style="width:80px">Tier</th>
+          <th>Title</th>
+          <th style="width:120px">Depends on</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>F2-T1</code></td>
+          <td><span class="tier tier-ui">ui</span></td>
+          <td>
+            <strong>Author fix-wiki.html template as a sibling of wave-wiki.html</strong>
+            <div style="margin-top:8px">
+              <details>
+                <summary style="cursor:pointer;color:var(--muted);font-size:13px">scope_paths · acceptance hint · patterns</summary>
+                <div style="margin-top:10px">
+                  <strong style="font-size:12.5px;color:var(--muted)">SCOPE PATHS</strong>
+                  <ul class="scope-paths">
+                    <li><code>.claude/skills/stx-fix/templates/fix-wiki.html</code></li>
+                  </ul>
+                  <strong style="font-size:12.5px;color:var(--muted)">ACCEPTANCE TEST HINT (for QA)</strong>
+                  <p>QA writes a Playwright test that loads a sample-rendered fix-wiki.html (placeholders substituted from N≥2 fixture fix-state.json files including at least one done and one halted-at-cap) and asserts: (1) the page renders without JS errors, (2) the header eyebrow text differs from wave-wiki.html and reads "Cross-fix index · rebuilt on every fix close-out", (3) the H1 reads "Fix Wiki", (4) rows are sorted by started_at DESC, (5) each row's anchor href ends in fix-{slug}/fix-report.html (or fix-{slug}/ when missing), (6) status pill classes match the four statuses, (7) the lede paragraph references /stx-fix not /stx-feature.</p>
+                  <strong style="font-size:12.5px;color:var(--muted)">EXISTING PATTERNS TO FOLLOW</strong>
+                  <ul>
+                    <li>Clone <code>.claude/skills/stx-feature/templates/wave-wiki.html</code> structurally — same head, .wrap, single-table layout, placeholder grammar.</li>
+                    <li>Reuse the <code>{{INLINE_STYLES}}</code> placeholder from <code>wave-wiki.html:46</code>.</li>
+                    <li>Differentiate header eyebrow + H1 + lede paragraph copy per F2 acceptance criterion.</li>
+                    <li>Document the scan glob explicitly in the top-of-file comment block: <code>docs/waves/fix-*/fix-state.json</code>. Mirror the comment-block shape of <code>wave-wiki.html:1-40</code>.</li>
+                  </ul>
+                </div>
+              </details>
+            </div>
+          </td>
+          <td><code>F1-T1, F1-T2</code></td>
+        </tr>
+        <tr>
+          <td><code>F2-T2</code></td>
+          <td><span class="tier tier-ui">ui</span></td>
+          <td>
+            <strong>Tighten wave-wiki.html scan-glob documentation + add fix-*/ exclusion note</strong>
+            <div style="margin-top:8px">
+              <details>
+                <summary style="cursor:pointer;color:var(--muted);font-size:13px">scope_paths · acceptance hint · patterns</summary>
+                <div style="margin-top:10px">
+                  <strong style="font-size:12.5px;color:var(--muted)">SCOPE PATHS</strong>
+                  <ul class="scope-paths">
+                    <li><code>.claude/skills/stx-feature/templates/wave-wiki.html</code></li>
+                  </ul>
+                  <strong style="font-size:12.5px;color:var(--muted)">ACCEPTANCE TEST HINT (for QA)</strong>
+                  <p>QA writes a vitest-unit test that loads wave-wiki.html, asserts the top-of-file comment block now documents the scan glob as <code>docs/waves/wave-*/wave-state.json</code> (NOT <code>docs/waves/*/wave-state.json</code>), and asserts a new paragraph explicitly excludes <code>fix-*/</code> folders with a pointer to fix-wiki.html. The rendered HTML body must be byte-identical to before — only the comment block changes.</p>
+                  <strong style="font-size:12.5px;color:var(--muted)">EXISTING PATTERNS TO FOLLOW</strong>
+                  <ul>
+                    <li>Edit only the comment block at <code>.claude/skills/stx-feature/templates/wave-wiki.html:1-40</code> — specifically lines 6-13 (the directory layout) and line 27 (<code>{{#each waves}}</code> comment). Update the glob in both places.</li>
+                    <li>Add a one-paragraph note stating fix-*/ folders are intentionally excluded; cross-reference docs/waves/fix-wiki.html.</li>
+                    <li>Do NOT touch the HTML body (lines 41-92). This is a documentation-only change.</li>
+                  </ul>
+                </div>
+              </details>
+            </div>
+          </td>
+          <td><code>—</code></td>
+        </tr>
+        <tr>
+          <td><code>F2-T3</code></td>
+          <td><span class="tier tier-service">service</span></td>
+          <td>
+            <strong>Update stx-fix/SKILL.md Step 7 to describe fix-wiki.html rebuild + wave-wiki separation</strong>
+            <div style="margin-top:8px">
+              <details>
+                <summary style="cursor:pointer;color:var(--muted);font-size:13px">scope_paths · acceptance hint · patterns</summary>
+                <div style="margin-top:10px">
+                  <strong style="font-size:12.5px;color:var(--muted)">SCOPE PATHS</strong>
+                  <ul class="scope-paths">
+                    <li><code>.claude/skills/stx-fix/SKILL.md</code></li>
+                  </ul>
+                  <strong style="font-size:12.5px;color:var(--muted)">ACCEPTANCE TEST HINT (for QA)</strong>
+                  <p>QA writes a vitest-unit test that loads stx-fix/SKILL.md and asserts: (1) Step 7 instructs the orchestrator to rebuild docs/waves/fix-wiki.html by scanning every docs/waves/fix-*/fix-state.json (exact glob spelled out), (2) Step 7 instructs that wave-wiki.html is NOT touched by /stx-fix, (3) the rebuild instruction calls out idempotence (sort by started_at DESC, every fix-*/ folder regardless of status), (4) the file references the new template path fix-wiki.html.</p>
+                  <strong style="font-size:12.5px;color:var(--muted)">EXISTING PATTERNS TO FOLLOW</strong>
+                  <ul>
+                    <li>Mirror the wiki-rebuild instruction style at <code>.claude/skills/stx-feature/SKILL.md:312-317</code> exactly.</li>
+                    <li>Add the fix-wiki rebuild AFTER the fix-report write (F1-T5 added that subsection); order: fix-state.json → fix-report.html → fix-wiki.html → terminal summary.</li>
+                    <li>Note the wave-wiki/fix-wiki separation: /stx-fix is forbidden from re-rendering wave-wiki.html.</li>
+                  </ul>
+                </div>
+              </details>
+            </div>
+          </td>
+          <td><code>F1-T5, F2-T1, F2-T2</code></td>
+        </tr>
+        <tr>
+          <td><code>F2-T4</code></td>
+          <td><span class="tier tier-service">service</span></td>
+          <td>
+            <strong>Update stx-feature SKILL.md + template.md to clarify wave-wiki glob now excludes fix-*/</strong>
+            <div style="margin-top:8px">
+              <details>
+                <summary style="cursor:pointer;color:var(--muted);font-size:13px">scope_paths · acceptance hint · patterns</summary>
+                <div style="margin-top:10px">
+                  <strong style="font-size:12.5px;color:var(--muted)">SCOPE PATHS</strong>
+                  <ul class="scope-paths">
+                    <li><code>.claude/skills/stx-feature/SKILL.md</code></li>
+                    <li><code>.claude/skills/stx-feature/template.md</code></li>
+                  </ul>
+                  <strong style="font-size:12.5px;color:var(--muted)">ACCEPTANCE TEST HINT (for QA)</strong>
+                  <p>QA writes a vitest-unit test that loads both files and asserts: (1) the wave-wiki rebuild instruction in <code>SKILL.md:312-317</code> now spells the glob as <code>docs/waves/wave-*/wave-state.json</code>, (2) the equivalent prose in template.md (around line 337) is updated the same way, (3) no other behaviour-bearing prose changes. NOTE: this task does NOT bump the stx-feature skill version.</p>
+                  <strong style="font-size:12.5px;color:var(--muted)">EXISTING PATTERNS TO FOLLOW</strong>
+                  <ul>
+                    <li>Two-character edit in each file: <code>docs/waves/*/wave-state.json</code> → <code>docs/waves/wave-*/wave-state.json</code>. Both occurrences must change.</li>
+                    <li>Add a single sentence note next to each glob mentioning fix-*/ is excluded.</li>
+                    <li>Do NOT bump stx-feature's frontmatter version — this is a docstring-level clarification, not a behaviour change.</li>
+                  </ul>
+                </div>
+              </details>
+            </div>
+          </td>
+          <td><code>F2-T2</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <span class="card-id">F3</span>
+        <h3 class="card-title" style="margin-top:4px">Standard skill-change documentation cycle for /stx-fix</h3>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:80px">Task</th>
+          <th style="width:80px">Tier</th>
+          <th>Title</th>
+          <th style="width:120px">Depends on</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>F3-T1</code></td>
+          <td><span class="tier tier-service">service</span></td>
+          <td>
+            <strong>Bump stx-fix/SKILL.md frontmatter version + update description string</strong>
+            <div style="margin-top:8px">
+              <details>
+                <summary style="cursor:pointer;color:var(--muted);font-size:13px">scope_paths · acceptance hint · patterns</summary>
+                <div style="margin-top:10px">
+                  <strong style="font-size:12.5px;color:var(--muted)">SCOPE PATHS</strong>
+                  <ul class="scope-paths">
+                    <li><code>.claude/skills/stx-fix/SKILL.md</code></li>
+                  </ul>
+                  <strong style="font-size:12.5px;color:var(--muted)">ACCEPTANCE TEST HINT (for QA)</strong>
+                  <p>QA writes a vitest-unit test that loads stx-fix/SKILL.md frontmatter and asserts: (1) <code>version: 1.3.0</code> (was 1.2.0), (2) the description: line now contains the substring "writes a per-fix folder under docs/waves/fix-{slug}/" (or equivalent), (3) all other frontmatter fields are unchanged.</p>
+                  <strong style="font-size:12.5px;color:var(--muted)">EXISTING PATTERNS TO FOLLOW</strong>
+                  <ul>
+                    <li>Follow the precedent set by the 1.1.0 → 1.2.0 bump (commit 1d944e6) — new artifact behaviour is a minor bump.</li>
+                    <li>The frontmatter description follows <code>.claude/skills/stx-feature/SKILL.md:3</code> — first sentence states what the skill does, append the new capability.</li>
+                    <li>Per CLAUDE.md: SKILL.md version and catalog.json version must match — F3-T2 matches this bump.</li>
+                  </ul>
+                </div>
+              </details>
+            </div>
+          </td>
+          <td><code>F1-T5, F1-T6, F2-T3</code></td>
+        </tr>
+        <tr>
+          <td><code>F3-T2</code></td>
+          <td><span class="tier tier-service">service</span></td>
+          <td>
+            <strong>Bump stx-fix/catalog.json version + update card.summary/paragraph/extras</strong>
+            <div style="margin-top:8px">
+              <details>
+                <summary style="cursor:pointer;color:var(--muted);font-size:13px">scope_paths · acceptance hint · patterns</summary>
+                <div style="margin-top:10px">
+                  <strong style="font-size:12.5px;color:var(--muted)">SCOPE PATHS</strong>
+                  <ul class="scope-paths">
+                    <li><code>.claude/skills/stx-fix/catalog.json</code></li>
+                  </ul>
+                  <strong style="font-size:12.5px;color:var(--muted)">ACCEPTANCE TEST HINT (for QA)</strong>
+                  <p>QA writes a vitest-unit test that loads stx-fix/catalog.json and asserts: (1) version === "1.3.0" matching SKILL.md, (2) card.summary contains the substring "per-fix folder" or "fix-{slug}/", (3) card.paragraph mentions both fix-report.html and fix-state.json, (4) card.extras contains a new bullets/paragraph entry naming fix-report.html, fix-state.json, and fix-wiki.html, (5) running <code>npm run check-docs</code> after this task exits 0.</p>
+                  <strong style="font-size:12.5px;color:var(--muted)">EXISTING PATTERNS TO FOLLOW</strong>
+                  <ul>
+                    <li>Validate against <code>.claude/skills/catalog.schema.json</code> — extras entries must match one of bullets/ordered/table/callout/paragraph.</li>
+                    <li>Mirror the card.extras style of <code>.claude/skills/stx-feature/catalog.json</code> or <code>.claude/skills/stx-checkin/catalog.json</code>. <code>kind: bullets</code> with title "Artifacts produced" is the cleanest fit.</li>
+                    <li>Keep card.invocations / card.use_when / card.dontuse_when unchanged.</li>
+                  </ul>
+                </div>
+              </details>
+            </div>
+          </td>
+          <td><code>F3-T1</code></td>
+        </tr>
+        <tr>
+          <td><code>F3-T3</code></td>
+          <td><span class="tier tier-service">service</span></td>
+          <td>
+            <strong>Polish stx-fix/README.md to mention the new artifacts at a high level</strong>
+            <div style="margin-top:8px">
+              <details>
+                <summary style="cursor:pointer;color:var(--muted);font-size:13px">scope_paths · acceptance hint · patterns</summary>
+                <div style="margin-top:10px">
+                  <strong style="font-size:12.5px;color:var(--muted)">SCOPE PATHS</strong>
+                  <ul class="scope-paths">
+                    <li><code>.claude/skills/stx-fix/README.md</code></li>
+                  </ul>
+                  <strong style="font-size:12.5px;color:var(--muted)">ACCEPTANCE TEST HINT (for QA)</strong>
+                  <p>QA writes a vitest-unit test that loads stx-fix/README.md and asserts that at least one new sentence (or section) mentions docs/waves/fix-{slug}/fix-report.html AND docs/waves/fix-wiki.html. The test asserts the existing design-notes sections (Goals, Why two agents, Why an explicit acceptance gate, etc.) are preserved.</p>
+                  <strong style="font-size:12.5px;color:var(--muted)">EXISTING PATTERNS TO FOLLOW</strong>
+                  <ul>
+                    <li>Append a new section near the bottom — e.g. "## Per-fix artifacts (v1.3+)" — modelled after "How this composes with other skills" (terse, points outward to file paths).</li>
+                    <li>Optionally add one bullet to "Goals" if it reads as a goal of the skill.</li>
+                    <li>Do not rewrite existing prose; additive edits only.</li>
+                  </ul>
+                </div>
+              </details>
+            </div>
+          </td>
+          <td><code>F1-T5, F2-T3</code></td>
+        </tr>
+        <tr>
+          <td><code>F3-T4</code></td>
+          <td><span class="tier tier-service">service</span></td>
+          <td>
+            <strong>Run npm run build to regenerate stx-help SKILL.md, stx-help-html help.html, and root index.html</strong>
+            <div style="margin-top:8px">
+              <details>
+                <summary style="cursor:pointer;color:var(--muted);font-size:13px">scope_paths · acceptance hint · patterns</summary>
+                <div style="margin-top:10px">
+                  <strong style="font-size:12.5px;color:var(--muted)">SCOPE PATHS</strong>
+                  <ul class="scope-paths">
+                    <li><code>.claude/skills/stx-help/SKILL.md</code></li>
+                    <li><code>.claude/skills/stx-help-html/help.html</code></li>
+                    <li><code>index.html</code></li>
+                  </ul>
+                  <strong style="font-size:12.5px;color:var(--muted)">ACCEPTANCE TEST HINT (for QA)</strong>
+                  <p>QA runs <code>npm run build</code> from the repo root, then asserts: (1) the command exited 0, (2) all three files were modified (git diff shows changes between BEGIN AUTO / END AUTO markers and ONLY there), (3) the regenerated terminal listing in stx-help/SKILL.md shows /stx-fix with version badge v1.3, (4) the regenerated card cluster in help.html shows /stx-fix's new card.summary text. No file outside scope_paths is touched.</p>
+                  <strong style="font-size:12.5px;color:var(--muted)">EXISTING PATTERNS TO FOLLOW</strong>
+                  <ul>
+                    <li>Follow <code>src/cli/generate-help.ts:380-423</code> (main function). Do not modify generate-help.ts; just run the script.</li>
+                    <li>Per CLAUDE.md: hand-editing AUTO regions is ALWAYS WRONG. The Dev does NOT open these files — only runs npm run build and stages the diffs.</li>
+                    <li>Stage all three regenerated files in the same commit as F3-T1/T2/T3's source edits.</li>
+                  </ul>
+                </div>
+              </details>
+            </div>
+          </td>
+          <td><code>F3-T2</code></td>
+        </tr>
+        <tr>
+          <td><code>F3-T5</code></td>
+          <td><span class="tier tier-service">service</span></td>
+          <td>
+            <strong>Verify npm run check-docs exits 0 against the post-build tree</strong>
+            <div style="margin-top:8px">
+              <details>
+                <summary style="cursor:pointer;color:var(--muted);font-size:13px">scope_paths · acceptance hint · patterns</summary>
+                <div style="margin-top:10px">
+                  <strong style="font-size:12.5px;color:var(--muted)">SCOPE PATHS</strong>
+                  <ul class="scope-paths">
+                    <li><em>(no files touched — verification gate only)</em></li>
+                  </ul>
+                  <strong style="font-size:12.5px;color:var(--muted)">ACCEPTANCE TEST HINT (for QA)</strong>
+                  <p>QA runs <code>npm run check-docs</code> from the repo root and asserts the command exited 0. If it exits 1, the test fails and surfaces the listed stale files. This is the wave-level pre-commit gate per CLAUDE.md — its green is the wave's acceptance test that F1+F2+F3's doc cycle landed correctly.</p>
+                  <strong style="font-size:12.5px;color:var(--muted)">EXISTING PATTERNS TO FOLLOW</strong>
+                  <ul>
+                    <li>Per CLAUDE.md: <code>npm run check-docs</code> = <code>tsc &amp;&amp; node dist/cli/generate-help.js --check</code> — same code path as <code>npm run build</code> in dry-run mode.</li>
+                    <li>This task touches NO files — scope_paths is intentionally empty.</li>
+                    <li>If check-docs fails after F3-T4 succeeded, escalate to the Architect for revision.</li>
+                  </ul>
+                </div>
+              </details>
+            </div>
+          </td>
+          <td><code>F3-T4</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2><span class="num">§5</span> Dependency graph (visual)</h2>
+  <p>How tasks must order. F1's renderer-source artifacts (T1 + T2) gate the integration tasks; F2's wiki tasks gate F2-T3; F3's doc cycle is strictly last because it regenerates derived docs.</p>
+  <pre>
+[F1-T1] fix-state.schema.json ───┐
+                                  ├──▶ [F1-T2] fix-report.html template ──┐
+[F1-T3] stx-qa.md hand-back ─────┐│                                        │
+[F1-T4] stx-coder.md hand-back ──┘│                                        │
+                                  ▼                                        │
+                          [F1-T5] stx-fix/SKILL.md Step 6/7 ───▶ [F1-T6] template.md §9
+                                  │                                        │
+                                  ├──────────────────────────────────┐    │
+                                  ▼                                  ▼    │
+                          [F2-T1] fix-wiki.html template ───┐              │
+                                                             │              │
+[F2-T2] wave-wiki.html scan-glob doc ─────────────┐          │              │
+                                                   │          │              │
+                                                   ▼          ▼              │
+                                          [F2-T3] stx-fix/SKILL.md Step 7 (wiki)
+                                                   │                          │
+                                                   ▼                          │
+                                          [F2-T4] stx-feature SKILL.md + template.md
+                                                   │                          │
+                                                   ▼                          │
+                                          [F3-T1] stx-fix/SKILL.md version bump ◀┘
+                                                   │
+                                                   ▼
+                                          [F3-T2] stx-fix/catalog.json bump
+                                                   │
+                                                   ├──▶ [F3-T3] stx-fix/README.md polish
+                                                   ▼
+                                          [F3-T4] npm run build (regen help+index)
+                                                   │
+                                                   ▼
+                                          [F3-T5] npm run check-docs (gate)
+  </pre>
+
+  <h2><span class="num">§6</span> Revisions</h2>
+  <p>The Architect is re-engaged when a task hits the soft-cap. Each re-engagement adds a Revision below — it never overwrites the original task definition.</p>
+  <p style="color:var(--muted);font-style:italic">No revisions yet.</p>
+
+  <h2><span class="num">§7</span> Gate 2</h2>
+  <div class="note">
+    The orchestrator pauses here. The user must approve this document before QA (Agent 3) writes failing tests. After approval, the out-of-scope list in §1 is frozen for the wave.
+  </div>
+</div>
+</body>
+</html>

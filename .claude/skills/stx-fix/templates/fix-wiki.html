@@ -1,0 +1,118 @@
+<!doctype html>
+<!--
+================================================================================
+  fix-wiki.html — Cross-fix index, rebuilt by the /stx-fix orchestrator at
+  every fix close-out (Step 7). Lives ONE LEVEL ABOVE the per-fix directories,
+  as a SIBLING of wave-wiki.html:
+
+      docs/waves/fix-wiki.html           ← this file (cross-fix view)
+      docs/waves/wave-wiki.html          ← sibling, owned by /stx-feature
+      docs/waves/fix-<slug>/              ← one directory per fix
+          fix-state.json                 ← canonical per-fix state (model)
+          fix-report.html                ← per-fix view
+
+  IDEMPOTENT REBUILD. This file is NEVER hand-edited and NEVER appended-to in
+  place. On every render the orchestrator re-scans every
+  docs/waves/fix-*/fix-state.json and regenerates the whole table from
+  scratch, so a re-run, a manually added/removed fix directory, or a stale
+  partial write always self-heals to match reality. fix-state.json is
+  canonical; this is presentation.
+
+  SCOPE — FIX FOLDERS ONLY. The scan glob is deliberately prefixed with
+  "fix-" so that sibling wave-*/ folders (written by /stx-feature into
+  docs/waves/wave-<slug>-<xxx>/) are intentionally excluded from this wiki.
+  Wave artifacts are aggregated separately into docs/waves/wave-wiki.html by
+  the /stx-feature skill. Keeping the two indexes apart prevents single-issue
+  fix rows from being drowned out by multi-feature wave rows, and lets each
+  skill own the rebuild of its own wiki without cross-contamination. The
+  /stx-fix orchestrator MUST NOT touch wave-wiki.html, and the /stx-feature
+  orchestrator MUST NOT touch fix-wiki.html.
+
+  Rows are sorted by started_at DESCENDING (most recent fix first). Every fix
+  directory is listed regardless of status, so this doubles as a live
+  dashboard of recent bug-fix activity.
+
+  PLACEHOLDERS:
+    {{INLINE_STYLES}}            inlined contents of _styles.html (full <style>…</style>)
+    {{GENERATED_AT}}             ISO timestamp of this rebuild
+    {{FIX_COUNT}}                total number of fix directories found
+    {{DONE_COUNT}}               count where status == done
+    {{HALTED_COUNT}}             count where status in {halted-at-cap, blocked}
+    {{CANCELLED_COUNT}}          count where status == cancelled
+    {{#each fixes}}              one row per docs/waves/fix-*/fix-state.json, started_at DESC
+                                 (wave-*/ folders are excluded — see wave-wiki.html)
+      {{fix_id}}                 fix-<slug>  (also the directory name)
+      {{fix_slug}}               the kebab-case slug portion (without "fix-")
+      {{title}}                  one-line short title for this fix
+      {{status}}                 done | halted-at-cap | blocked | cancelled
+      {{started_at}}
+      {{finished_at}}            "—" when null
+      {{iterations_used}}        integer cycles actually consumed
+      {{iteration_cap}}          configured ceiling
+      {{link}}                   "./fix-{{fix_slug}}/fix-report.html" when fix-report.html exists,
+                                 else "./fix-{{fix_slug}}/" (the fix directory)
+    {{/each}}
+================================================================================
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fix Wiki — all /stx-fix runs</title>
+{{INLINE_STYLES}}
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Cross-fix index · rebuilt on every fix close-out</div>
+    <h1>Fix Wiki</h1>
+    <div class="meta">
+      <code>{{FIX_COUNT}}</code> fixes · <code>{{DONE_COUNT}}</code> done · <code>{{HALTED_COUNT}}</code> halted/blocked · <code>{{CANCELLED_COUNT}}</code> cancelled<br>
+      regenerated <code>{{GENERATED_AT}}</code> from <code>docs/waves/fix-*/fix-state.json</code>
+    </div>
+  </header>
+
+  <h2><span class="num">§1</span> All fixes</h2>
+  <p>Every <code>/stx-fix</code> run that has a directory under <code>docs/waves/</code>, newest first (sorted by <code>started_at</code> DESC). This table is regenerated from each fix's canonical <code>fix-state.json</code> — it is never edited by hand. Sibling <code>wave-*/</code> folders authored by <code>/stx-feature</code> are intentionally excluded; see <code>wave-wiki.html</code> for those.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Fix</th>
+        <th style="width:140px">Status</th>
+        <th>Title</th>
+        <th style="width:90px">Iters</th>
+        <th style="width:150px">Started</th>
+        <th style="width:150px">Finished</th>
+        <th style="width:70px">Open</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each fixes}}
+      <tr>
+        <td>
+          <strong>{{fix_slug}}</strong><br>
+          <span class="card-id">{{fix_id}}</span>
+        </td>
+        <td>
+          <span class="status status-{{status}}">{{status}}</span>
+          <!--
+            Status pill classes (all four must be referenced so the renderer
+            and any visual-regression test can map to them):
+              status-done           · loop terminated green
+              status-halted-at-cap  · iteration cap tripped before green
+              status-blocked        · hard-rule violation halted the loop
+              status-cancelled      · user cancelled before/during the loop
+          -->
+        </td>
+        <td style="font-size:13.5px">{{title}}</td>
+        <td style="font-variant-numeric:tabular-nums">{{iterations_used}}/{{iteration_cap}}</td>
+        <td style="font-size:12.5px;color:var(--muted)">{{started_at}}</td>
+        <td style="font-size:12.5px;color:var(--muted)">{{finished_at}}</td>
+        <td><a href="{{link}}">open ↗</a></td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+</div>
+</body>
+</html>
