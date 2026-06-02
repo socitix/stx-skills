@@ -1689,21 +1689,23 @@
       <details class="skill" id="sk-stx-pr-merge">
         <summary>
           <span class="ico">M</span>
-          <span class="nm">/stx-pr-merge<span class="one">Full chain: commit → push → PR → build → squash-merge → refresh main → build → cleanup. Halts on any failure.</span></span>
+          <span class="nm">/stx-pr-merge<span class="one">Full chain: commit → version bump → push → PR → build → squash-merge → refresh main → tag &amp; push → build → cleanup. Halts on any failure.</span></span>
           <span class="type type-wt">worktree-bound</span>
-          <span class="ver">v1.1</span>
+          <span class="ver">v1.2</span>
           <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
         </summary>
         <div class="body">
-          <p>The complete close-out for a feature worktree. Two build gates around the merge. Designed to be approved as one chain rather than step-by-step.</p>
+          <p>The complete close-out for a feature worktree. Two build gates around the merge. A conservative <code>auto</code> version bump (separate <code>chore(release):</code> commit) rides along between commit and push; the matching <code>vX.Y.Z</code> tag is pushed from <em>main</em> after the squash, so the tag always points at a real shipped commit. Designed to be approved as one chain rather than step-by-step.</p>
 
           <div class="blocks">
             <div class="block use"><div class="lbl">Use when</div><ul>
               <li>Feature branch finished, want one chain to merge &amp; clean up</li>
               <li>You want hard build-validation around the merge</li>
+              <li>You want the version bumped automatically (conservative patch by default; <code>--bump minor</code>/<code>--bump major</code> to force)</li>
             </ul></div>
             <div class="block dontuse"><div class="lbl">Don't use when</div><ul>
               <li>Only commit + push needed → <code>/stx-checkin</code></li>
+              <li>You only need the version bump (no merge) → <code>/stx-version-bump</code></li>
               <li>You're on main (skill is worktree-bound)</li>
             </ul></div>
           </div>
@@ -1715,18 +1717,97 @@
               <tr><td class="k">1</td><td>Pre-flight (status, branch, remote)</td><td>On main; dirty unrelated; no remote</td></tr>
               <tr><td class="k">2</td><td>Stage explicit files</td><td>Files don't match described</td></tr>
               <tr><td class="k">3</td><td>Commit (Conventional + co-author)</td><td>Empty message</td></tr>
+              <tr><td class="k">3b</td><td><strong>Version bump</strong> + <code>chore(release):</code> commit</td><td><code>package.json</code> missing <code>version</code>; tag <code>vX.Y.Z</code> exists; npm unavailable</td></tr>
               <tr><td class="k">4</td><td><code>git push -u</code></td><td>Rejected / protected / auth</td></tr>
               <tr><td class="k">5</td><td><code>gh pr create</code></td><td>gh unavailable</td></tr>
               <tr><td class="k">6</td><td>Build #1 (feature worktree)</td><td>Non-zero exit</td></tr>
               <tr><td class="k">7</td><td><code>gh pr merge --squash</code></td><td>Conflicts / checks</td></tr>
               <tr><td class="k">8</td><td>Refresh main <code>--ff-only</code></td><td>Non-fast-forward</td></tr>
+              <tr><td class="k">8b</td><td><strong>Tag <code>vX.Y.Z</code> on main + push tag</strong></td><td>Tag exists locally; push fails</td></tr>
               <tr><td class="k">9</td><td>Build #2 (main, post-merge)</td><td>Non-zero exit</td></tr>
               <tr><td class="k">10</td><td>Remove worktree + branch</td><td>Cleanup failure</td></tr>
             </tbody>
           </table>
 
+          <h4>Version bump policy (default <code>--bump auto</code>)</h4>
+          <table class="deftbl">
+            <thead><tr><th>Commit subject pattern</th><th>Inferred level</th></tr></thead>
+            <tbody>
+              <tr><td class="k"><code>feat:</code> / <code>fix:</code> / <code>perf:</code></td><td><code>patch</code></td></tr>
+              <tr><td class="k"><code>feat!:</code> / <code>fix!:</code> / <code>BREAKING CHANGE:</code> in body</td><td><code>major</code></td></tr>
+              <tr><td class="k"><code>chore:</code>/<code>docs:</code>/<code>refactor:</code>/<code>style:</code>/<code>test:</code>/<code>ci:</code>/<code>build:</code></td><td><code>none</code> (silent skip)</td></tr>
+              <tr><td class="k">Anything else</td><td><code>none</code> (pass <code>--bump</code> to force)</td></tr>
+            </tbody>
+          </table>
+
+          <h4><code>minor</code> / <code>major</code> are explicit-only</h4>
+          <p>The auto-policy never picks <code>minor</code> or <code>major</code> on its own — pass <code>--bump minor</code> or <code>--bump major</code> when this PR warrants more than a patch. The one exception is the <code>!</code> / <code>BREAKING CHANGE:</code> marker, which signals <code>major</code> deliberately.</p>
+
           <h4>Single chained approval</h4>
-          <p>One sentence covers every named step: "Commit these, push, open a PR, squash-merge, refresh main, clean up the worktree." Failures still halt; unexpected files still need a fresh approval.</p>
+          <p>One sentence covers every named step: "Commit these, bump version, push, open a PR, squash-merge, refresh main, tag and push, clean up the worktree." Failures still halt; unexpected files still need a fresh approval. Pass <code>--no-bump</code> to suppress both the bump and the tag, or <code>--no-tag</code> to keep the bump but defer the tag push.</p>
+        </div>
+      </details>
+
+      <details class="skill" id="sk-stx-version-bump">
+        <summary>
+          <span class="ico">V</span>
+          <span class="nm">/stx-version-bump<span class="one">Standalone SemVer bump: reads package.json, infers a conservative level from the commit subject, writes a separate chore(release) commit, tags locally. No push.</span></span>
+          <span class="type type-any">any-bound</span>
+          <span class="ver">v1.0</span>
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </summary>
+        <div class="body">
+          <p>The standalone counterpart to <code>/stx-pr-merge</code>'s built-in bump step. Use when you forgot to bump in the last shipped PR, want to override the auto-inference, or are aggregating several feature PRs into a single release commit. Strictly local — push is intentionally left to <code>/stx-pr-merge</code> or a hand-run <code>git push --follow-tags</code>.</p>
+
+          <div class="blocks">
+            <div class="block use"><div class="lbl">Use when</div><ul>
+              <li>Last PR shipped without a bump — make a release commit now</li>
+              <li>Auto picked patch for a <code>feat:</code>, want to bump <em>minor</em> instead</li>
+              <li>Release-PR style: aggregate several merged PRs into one <code>chore(release)</code></li>
+              <li>Using <code>/stx-checkin</code> (no <code>/stx-pr-merge</code>) and want the bump artifact locally</li>
+            </ul></div>
+            <div class="block dontuse"><div class="lbl">Don't use when</div><ul>
+              <li>You're running <code>/stx-pr-merge</code> — its STEP 1b already does this</li>
+              <li>Working tree is dirty — release commit must be bump-only</li>
+              <li>You want to push the tag — use <code>/stx-pr-merge</code> or <code>git push --follow-tags</code></li>
+            </ul></div>
+          </div>
+
+          <h4>Invocations</h4>
+          <pre><span class="c"># auto-infer level from HEAD commit subject</span>
+/stx-version-bump
+
+<span class="c"># explicit level (positional or via flag)</span>
+/stx-version-bump <span class="s">minor</span>
+/stx-version-bump <span class="o">--bump</span> <span class="s">major</span>
+
+<span class="c"># infer from a non-HEAD commit (e.g. release-PR aggregation)</span>
+/stx-version-bump <span class="o">--from-commit</span> <span class="s">HEAD~3</span>
+
+<span class="c"># bump but defer tagging</span>
+/stx-version-bump <span class="s">patch</span> <span class="o">--no-tag</span>
+
+<span class="c"># non-Node repo using a plain VERSION file</span>
+/stx-version-bump <span class="o">--version-file</span> <span class="s">VERSION</span>
+
+<span class="c"># preview only</span>
+/stx-version-bump <span class="o">--dry-run</span></pre>
+
+          <h4>Auto-inference policy (conservative)</h4>
+          <table class="deftbl">
+            <thead><tr><th>Commit subject pattern</th><th>Inferred level</th></tr></thead>
+            <tbody>
+              <tr><td class="k"><code>feat:</code> / <code>fix:</code> / <code>perf:</code></td><td><code>patch</code></td></tr>
+              <tr><td class="k"><code>feat!:</code> / <code>fix!:</code> / <code>BREAKING CHANGE:</code> in body</td><td><code>major</code></td></tr>
+              <tr><td class="k"><code>chore:</code> / <code>docs:</code> / <code>refactor:</code> / <code>style:</code> / <code>test:</code> / <code>ci:</code> / <code>build:</code></td><td><code>none</code> (skipped)</td></tr>
+              <tr><td class="k">Anything else</td><td><code>none</code> — pass <code>--bump</code> to force</td></tr>
+            </tbody>
+          </table>
+
+          <h4>minor / major are explicit-only</h4>
+          <p>The auto-policy never infers <code>minor</code> or <code>major</code> on its own — those require an explicit positional <code>minor</code>/<code>major</code> or <code>--bump minor</code>/<code>--bump major</code>. <code>!</code>/<code>BREAKING CHANGE:</code> markers are the one exception (they signal <code>major</code> deliberately).</p>
+
+          <div class="callout callout-teal">Tag is created <strong>locally only</strong>. Push when you ship — <code>/stx-pr-merge</code> does this automatically at STEP 5b, or run <code>git push origin vX.Y.Z</code> by hand.</div>
         </div>
       </details>
 

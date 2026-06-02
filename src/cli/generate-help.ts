@@ -126,6 +126,7 @@ const CARD_ORDER = [
   "stx-fix",
   "stx-checkin",
   "stx-pr-merge",
+  "stx-version-bump",
   "stx-worktree-report",
   "stx-image",
   "stx-magazine-report",

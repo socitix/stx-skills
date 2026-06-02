@@ -2,24 +2,27 @@
   "$schema": "../catalog.schema.json",
   "name": "stx-pr-merge",
   "slash": "/stx-pr-merge",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "zone": "worktree",
   "icon": "M",
   "terminal": {
     "group": "WORKTREE-BOUND",
     "lines": [
-      "Commit → PR → build → squash-merge → cleanup chain"
+      "Commit → version bump → PR → build → squash-merge → tag → cleanup",
+      "Conservative bump default: feat:/fix:/perf: → patch; --bump minor/major to force"
     ]
   },
   "card": {
-    "summary": "Full chain: commit → push → PR → build → squash-merge → refresh main → build → cleanup. Halts on any failure.",
-    "paragraph": "The complete close-out for a feature worktree. Two build gates around the merge. Designed to be approved as one chain rather than step-by-step.",
+    "summary": "Full chain: commit → version bump → push → PR → build → squash-merge → refresh main → tag &amp; push → build → cleanup. Halts on any failure.",
+    "paragraph": "The complete close-out for a feature worktree. Two build gates around the merge. A conservative <code>auto</code> version bump (separate <code>chore(release):</code> commit) rides along between commit and push; the matching <code>vX.Y.Z</code> tag is pushed from <em>main</em> after the squash, so the tag always points at a real shipped commit. Designed to be approved as one chain rather than step-by-step.",
     "use_when": [
       "Feature branch finished, want one chain to merge &amp; clean up",
-      "You want hard build-validation around the merge"
+      "You want hard build-validation around the merge",
+      "You want the version bumped automatically (conservative patch by default; <code>--bump minor</code>/<code>--bump major</code> to force)"
     ],
     "dontuse_when": [
       "Only commit + push needed → <code>/stx-checkin</code>",
+      "You only need the version bump (no merge) → <code>/stx-version-bump</code>",
       "You're on main (skill is worktree-bound)"
     ],
     "extras": [
@@ -31,19 +34,37 @@
           ["1", "Pre-flight (status, branch, remote)", "On main; dirty unrelated; no remote"],
           ["2", "Stage explicit files", "Files don't match described"],
           ["3", "Commit (Conventional + co-author)", "Empty message"],
+          ["3b", "<strong>Version bump</strong> + <code>chore(release):</code> commit", "<code>package.json</code> missing <code>version</code>; tag <code>vX.Y.Z</code> exists; npm unavailable"],
           ["4", "<code>git push -u</code>", "Rejected / protected / auth"],
           ["5", "<code>gh pr create</code>", "gh unavailable"],
           ["6", "Build #1 (feature worktree)", "Non-zero exit"],
           ["7", "<code>gh pr merge --squash</code>", "Conflicts / checks"],
           ["8", "Refresh main <code>--ff-only</code>", "Non-fast-forward"],
+          ["8b", "<strong>Tag <code>vX.Y.Z</code> on main + push tag</strong>", "Tag exists locally; push fails"],
           ["9", "Build #2 (main, post-merge)", "Non-zero exit"],
           ["10", "Remove worktree + branch", "Cleanup failure"]
         ]
       },
       {
+        "kind": "table",
+        "title": "Version bump policy (default <code>--bump auto</code>)",
+        "headers": ["Commit subject pattern", "Inferred level"],
+        "rows": [
+          ["<code>feat:</code> / <code>fix:</code> / <code>perf:</code>", "<code>patch</code>"],
+          ["<code>feat!:</code> / <code>fix!:</code> / <code>BREAKING CHANGE:</code> in body", "<code>major</code>"],
+          ["<code>chore:</code>/<code>docs:</code>/<code>refactor:</code>/<code>style:</code>/<code>test:</code>/<code>ci:</code>/<code>build:</code>", "<code>none</code> (silent skip)"],
+          ["Anything else", "<code>none</code> (pass <code>--bump</code> to force)"]
+        ]
+      },
+      {
+        "kind": "paragraph",
+        "title": "<code>minor</code> / <code>major</code> are explicit-only",
+        "html": "The auto-policy never picks <code>minor</code> or <code>major</code> on its own — pass <code>--bump minor</code> or <code>--bump major</code> when this PR warrants more than a patch. The one exception is the <code>!</code> / <code>BREAKING CHANGE:</code> marker, which signals <code>major</code> deliberately."
+      },
+      {
         "kind": "paragraph",
         "title": "Single chained approval",
-        "html": "One sentence covers every named step: \"Commit these, push, open a PR, squash-merge, refresh main, clean up the worktree.\" Failures still halt; unexpected files still need a fresh approval."
+        "html": "One sentence covers every named step: \"Commit these, bump version, push, open a PR, squash-merge, refresh main, tag and push, clean up the worktree.\" Failures still halt; unexpected files still need a fresh approval. Pass <code>--no-bump</code> to suppress both the bump and the tag, or <code>--no-tag</code> to keep the bump but defer the tag push."
       }
     ]
   }

@@ -1,12 +1,13 @@
 {
   "name": "stx-skills",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "description": "Organization-wide Claude Code skills collection",
   "main": "dist/cli/install.js",
   "bin": {
     "stx-skills": "./dist/cli/install.js",
     "stx-checkin": "./dist/skills/stx-checkin.js",
     "stx-pr-merge": "./dist/skills/stx-pr-merge.js",
+    "stx-version-bump": "./dist/skills/stx-version-bump.js",
     "stx-image": "./dist/skills/stx-image.js",
     "stx-worktree-report": "./dist/skills/stx-worktree-report.js",
     "stx-generate-help": "./dist/cli/generate-help.js"
