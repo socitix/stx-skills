@@ -1,7 +1,7 @@
 ---
 name: stx-qa
 description: Shared QA persona used by /stx-feature (wave context — writes failing tests per task, supervises Dev loop) and /stx-fix (single-bug context — writes one failing test, supervises Coder loop). Decides test kind (Playwright / E2E / Vitest unit), authors failing tests that map 1:1 to task or issue IDs, reruns tests after every Dev/Coder iteration, and is the only agent allowed to edit test files.
-version: 1.0.0
+version: 1.1.0
 author: STX
 role: qa
 inputs:
@@ -51,6 +51,19 @@ When invoked from /stx-fix:
 3. Write ONE failing test per issue. Each test must include a header comment naming the issue it covers.
 4. Run the test. Paste output as evidence — it must fail for the right reason.
 5. Hand the failing test path(s) back to the orchestrator.
+
+## Hand-back format (stx-fix)
+
+When step 5 above hands back to the orchestrator, return a **structured block** the orchestrator can parse verbatim into `fix-state.json.tests_written[]` and `fix-state.json.test_paths_per_issue`. Plain prose is not enough — the schema is fixed and the field names below are load-bearing.
+
+- `tests_written` — an **array of objects**, one entry per failing test you wrote. Each object has:
+  - `issue` (string) — the issue id from the rendered prompt's §1 (e.g. `issue-1`, `issue-2`). One issue per entry; if a single test covers two issues, emit two entries that share the same `path`.
+  - `path` (string) — repo-relative path to the test file (e.g. `e2e/report-rebuild.spec.ts`, `tests/run-wave-tests.mjs`).
+  - `kind` (string) — one of `playwright`, `e2e`, `vitest-unit`, or `both` — must match the `test_kind` field decided in step 2.
+  - `runner` (string) — the exact shell command to rerun just this test (e.g. `npx playwright test e2e/report-rebuild.spec.ts`, `node tests/run-wave-tests.mjs F1-T3`). The Coder uses this string as-is during the loop.
+- `test_paths_per_issue` — an **object** mapping `issueId → testPath` (e.g. `{ "issue-1": "e2e/report-rebuild.spec.ts", "issue-2": "e2e/wiki-sort.spec.ts" }`). This is a flattened convenience view of `tests_written[]` and MUST stay consistent with it; if a test covers multiple issues, list the same `path` under each `issueId`.
+
+The orchestrator copies `tests_written` straight into `fix-state.json.tests_written[]` (no transformation) and uses `test_paths_per_issue` to populate the per-issue rows in the rendered `fix-report.html`. Keep the field names and shapes exact — the schema in `.claude/skills/stx-fix/templates/fix-state.schema.json` is the source of truth.
 
 ## Verification contract (the loop)
 

@@ -336,7 +336,7 @@ Render `result.html` from the bundled template. It must include:
 
 Then **rebuild `docs/waves/wave-wiki.html`** from the bundled template (`templates/wave-wiki.html`). This is a full regenerate, not an append:
 
-- Scan **every** `docs/waves/*/wave-state.json`, not just this wave's.
+- Scan **every** `docs/waves/wave-*/wave-state.json`, not just this wave's. `fix-*/` folders are excluded and are aggregated separately in `docs/waves/fix-wiki.html` by `/stx-fix`.
 - One row per wave: `wave_slug`, `wave_id`, `status`, `started_at`, `finished_at` (or `—`), `initial_request` trimmed to ~140 chars, and features done / total.
 - Link each row to `./<wave_id>/result.html` if that file exists, else `./<wave_id>/`.
 - Sort by `started_at` descending and render **all** waves regardless of status (the wiki doubles as a live dashboard).

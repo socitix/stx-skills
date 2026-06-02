@@ -278,7 +278,15 @@ Treat that single "yes" as approval for the full chain (per global multi-step ap
 
 ## 9. Reporting back to the user
 
-When the loop ends (green OR halted at cap), the orchestrator's final message includes:
+When the loop ends (green OR halted at cap), and **before** printing the terminal summary, the orchestrator writes a per-fix artifact folder to disk:
+
+- **Artifact write (always, even on halt):** create `docs/waves/fix-{slug}/` (where `{slug}` is `fix-state.json#/fix_slug` — the kebab-case slug shared with the worktree) and write two files inside it, in this strict order:
+  1. `docs/waves/fix-{slug}/fix-state.json` — the validated state record (per `.claude/skills/stx-fix/templates/fix-state.schema.json`), populated with `status`, `iterations_used`, `tests_written[]`, `files_touched[]`, `halt_reason` (non-null whenever `status != "done"`), and `finished_at`.
+  2. `docs/waves/fix-{slug}/fix-report.html` — rendered from the bundled template at `.claude/skills/stx-fix/templates/fix-report.html` by substituting `{{FIELD}}` placeholders from `fix-state.json` and resolving every `{{#each …}}` block. The HTML is rendered FROM the state, never the other way round.
+
+  On folder collision, follow the SKILL.md §"Per-fix artifact write" policy (overwrite / numeric suffix / cancel — default cancel). Both files are written on every terminal status, including `halted-at-cap`, `blocked`, and `cancelled`, so the user always gets a readable post-mortem on disk.
+
+Only after both files are on disk, the orchestrator's final terminal message includes:
 
 1. **Status:** green / halted at cap / blocked
 2. **Per-issue table:** issue # → test status → fix file(s) → 1-line of what changed
@@ -287,3 +295,9 @@ When the loop ends (green OR halted at cap), the orchestrator's final message in
 5. **Next action awaiting user:** commit? PR? deploy test? merge?
 
 Keep it short — bullets, not paragraphs. The diff and test output speak for themselves.
+
+The message MUST end with the literal last line:
+
+> `Report written to {{REPORT_PATH}}`
+
+where `{{REPORT_PATH}}` is the absolute path to the newly written `docs/waves/fix-{slug}/fix-report.html` (e.g. `Report written to /Users/you/proj/docs/waves/fix-pro-monthly-active/fix-report.html`). This gives the user a one-click pointer into the rendered artifact directly from the terminal summary.

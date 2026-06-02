@@ -1,7 +1,7 @@
 ---
 name: stx-fix
-description: Drives a two-agent QA → Coder loop against a known bug (or small cluster of related bugs). Interviews the user to fill the prompt template, confirms the worktree state, presents the rendered prompt for explicit user acceptance, then kicks off the loop. Use when the user has a reproducible bug and wants a failing test written first, then the smallest code change that makes it pass. Supports --autonomous to auto-approve the acceptance gate and optional-field interview (still halts on destructive ops, commits, and pushes).
-version: 1.2.0
+description: Drives a two-agent QA → Coder loop against a known bug (or small cluster of related bugs). Interviews the user to fill the prompt template, confirms the worktree state, presents the rendered prompt for explicit user acceptance, then kicks off the loop. Use when the user has a reproducible bug and wants a failing test written first, then the smallest code change that makes it pass. Supports --autonomous to auto-approve the acceptance gate and optional-field interview (still halts on destructive ops, commits, and pushes). Writes a per-fix folder under docs/waves/fix-{slug}/ containing fix-report.html and fix-state.json, plus a top-level docs/waves/fix-wiki.html index across all fixes.
+version: 1.3.0
 author: STX
 ---
 
@@ -191,11 +191,49 @@ Both persona files contain the full contract, hard rules, and reporting format. 
 
 Loop control is the orchestrator's job. The sub-agents do not decide when the loop ends.
 
+**Structured hand-back collection (feeds Step 7 artifacts).** The orchestrator MUST collect two structured arrays from the agents during the loop so the artifact writer in Step 7 has the data it needs:
+
+- **`tests_written[]`** — repo-relative paths of every failing test file authored by the QA agent at the start of the loop. Per `.claude/agents/stx-qa.md` v1.1.0, QA returns these in its structured hand-back; the orchestrator appends them to the running `fix-state.json#/tests_written` array. One entry per file (a single file may cover multiple numbered issues).
+- **`files_touched[]`** — production files modified by the Coder agent across all iterations, as `{ path, add, del }` rows. Per `.claude/agents/stx-coder.md` v1.1.0, the Coder returns these in its structured hand-back; the orchestrator merges them into `fix-state.json#/files_touched`, aggregating `add` / `del` counters across iterations (one row per file, deduplicated by `path`).
+
+Both arrays are persisted to `fix-state.json` at every iteration boundary so that even a halted-at-cap run carries the partial trail through to the Step 7 report.
+
 ### Step 7 — Done or halted
 
 Apply the rendered §7 (Done criteria) and §8 (After green) sections. Surface the final report per §9.
 
 If the iteration cap trips, write the handoff doc to `docs/tasks/<title-slug>-handoff.md` and surface to the user with a one-paragraph summary. Do NOT silently retry.
+
+#### Step 7a — Write the per-fix artifact folder (always, before terminal summary)
+
+Regardless of terminal status (`done`, `halted-at-cap`, `blocked`, `cancelled`), the orchestrator writes a per-fix artifact folder under `docs/waves/fix-{slug}/` so every fix run leaves the same shape on disk. This mirrors the per-wave folder shape `/stx-feature` already writes for `docs/waves/<wave_id>/`.
+
+**Procedure (run in order, from the worktree root):**
+
+1. **Resolve the target folder.** `target = docs/waves/fix-{slug}/` where `{slug}` is `fix-state.json#/fix_slug` (the same kebab-case slug used for the worktree). The full folder name is therefore `docs/waves/fix-<slug>/` and `fix_id` is `fix-<slug>`.
+2. **Collision handling — HARD STOP if `target` already exists.** Halt and use `AskUserQuestion` with three options (mirroring the worktree-on-main decision tree in Step 1):
+   1. **Overwrite.** Delete the existing folder contents and write fresh artifacts in place. Destructive — requires explicit selection.
+   2. **Append numeric suffix.** Write to `docs/waves/fix-{slug}-2/` (or `-3`, `-4`, … — pick the lowest free integer ≥ 2). Non-destructive; preserves the prior run.
+   3. **Cancel — DEFAULT.** Do not write any artifact. Surface the existing path to the user and stop. The fix-state stays in memory; no file changes on disk.
+   In `--autonomous` mode this gate is **not** auto-approved — collision is treated as destructive intent, so the orchestrator halts and asks even when running unattended. Default remains cancel.
+3. **Create the folder.** `mkdir -p docs/waves/fix-{slug}/` once the collision check passes.
+4. **Write `docs/waves/fix-{slug}/fix-state.json`.** Validate against `.claude/skills/stx-fix/templates/fix-state.schema.json` before persisting — schema drift halts the write. All required fields per the schema must be present (`fix_id`, `fix_slug`, `status`, `started_at`, `title`, `issues`, `repro`, `expected`, `test_kind`, `iteration_cap`, `commit_policy`, `iterations_used`, `tests_written`, `files_touched`); `finished_at` is set to the loop's terminal timestamp. `halt_reason` is non-null whenever `status != "done"`.
+5. **Render and write `docs/waves/fix-{slug}/fix-report.html`** from the bundled template at `.claude/skills/stx-fix/templates/fix-report.html`. Substitute the `{{FIELD}}` placeholders from `fix-state.json` directly (string fields), and resolve every `{{#each …}}` block by iterating the underlying array (`tests_written`, `files_touched`).
+6. **Issue-parsing note (schema/template impedance).** `fix-state.json#/issues` is stored as a **string** — the original markdown numbered list captured from the `{{issues}}` form input — but the renderer's `{{#each issues}}` block in `fix-report.html` expects an **array**. Before substituting, the orchestrator MUST parse the numbered markdown list into an array of `{ n, summary, status, fix_files, notes }` objects (one per numbered line), pairing each item with the matching line from `expected` (acceptance criterion), the per-issue terminal status, and the subset of `files_touched[].path` that QA / Coder annotated as fixing that issue. The on-disk JSON keeps the original markdown string so it round-trips with the form; the parse is renderer-side only.
+7. **Halt-path behaviour.** Even when the loop terminated abnormally (`halted-at-cap` / `blocked` / `cancelled`), `fix-state.json` and `fix-report.html` are still written, with `status` set to the appropriate non-`done` value and `halt_reason` populated. The user always gets a readable post-mortem on disk, never a silent failure.
+8. **Order of writes (strict):** `fix-state.json` → `fix-report.html` → `fix-wiki.html` (cross-fix index, see Step 7b) → terminal summary printed to the user. State is the source of truth; the HTML is rendered from it; the wiki is rebuilt from all states.
+9. **Surface to the user.** After all three files are written, the terminal one-paragraph summary ends with the literal line `Report written to <abs-path-to-fix-report.html>` so the user has a one-click path into the rendered artifact.
+
+#### Step 7b — Rebuild `docs/waves/fix-wiki.html` (cross-fix index)
+
+After the per-fix `fix-state.json` and `fix-report.html` are on disk, the orchestrator rebuilds the cross-fix index at `docs/waves/fix-wiki.html` from the bundled template at `.claude/skills/stx-fix/templates/fix-wiki.html`. This mirrors `/stx-feature`'s Step 8 wave-wiki rebuild, except it aggregates fixes (not waves) and lives in a sibling file.
+
+- Scan **every** `docs/waves/fix-*/fix-state.json` on disk (exact glob: `docs/waves/fix-*/fix-state.json`). Do not skip halted, blocked, or cancelled runs — every `fix-*/` folder is included regardless of `status`. The just-written fix is one of the rows; older fixes are the rest.
+- For each, read `fix_id`, `fix_slug`, `status`, `started_at`, `finished_at`, `title`, plus a short summary (e.g. first line of `issues`, trimmed to ~140 chars).
+- Set each row's link to `./{{fix_id}}/fix-report.html` when that file exists, else `./{{fix_id}}/`.
+- Sort rows by `started_at` **DESC** (newest first) and render **all** fixes, regardless of status, with a status pill (`status-done` / `status-halted-at-cap` / `status-blocked` / `status-cancelled`).
+- This is a full regenerate, not an append — overwrite `docs/waves/fix-wiki.html` each time so it stays consistent with the `fix-*/` directories on disk. The rebuild is **idempotent**: re-running it with the same on-disk state always produces a byte-identical file, so a re-run, a `--resume`, or a manually added/removed `fix-*/` folder always self-heals.
+- **Separation from `/stx-feature`.** `/stx-fix` MUST NOT touch `docs/waves/wave-wiki.html` — that file is owned by `/stx-feature`'s Step 8 and is rebuilt only from `docs/waves/wave-*/wave-state.json`. Only `fix-wiki.html` is rewritten here. Likewise `/stx-feature` does not touch `fix-wiki.html`. The two indexes are siblings under `docs/waves/` and are maintained independently by their respective skills.
 
 ## Iteration caps (from the rendered template, summarized)
 

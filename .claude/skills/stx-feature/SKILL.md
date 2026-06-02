@@ -109,7 +109,7 @@ Per-wave artifacts live under `docs/waves/wave-{slug}-{xxx}/`; one cross-wave in
 | `qa-verse.html` | per wave | QA Agent | Rendered list of failing tests, mapped task → test file |
 | `result.html` | per wave | Skill orchestrator | End-of-wave summary including suspicious changes |
 | `handoff.md` | per wave | Skill orchestrator | Only written when an iteration cap trips or the wave is halted |
-| `wave-wiki.html` | **all waves** | Skill orchestrator | Cross-wave index at `docs/waves/wave-wiki.html` (one level above the wave dirs). Rebuilt on every `result.html` write by scanning every `docs/waves/*/wave-state.json`. Lists all waves with status, started/finished, description, features done/total, and a link into each wave. |
+| `wave-wiki.html` | **all waves** | Skill orchestrator | Cross-wave index at `docs/waves/wave-wiki.html` (one level above the wave dirs). Rebuilt on every `result.html` write by scanning every `docs/waves/wave-*/wave-state.json`. `fix-*/` folders are excluded and are aggregated separately in `docs/waves/fix-wiki.html` by `/stx-fix`. Lists all waves with status, started/finished, description, features done/total, and a link into each wave. |
 
 HTML is rendered from `wave-state.json` after every state change — JSON is canonical, HTML is presentation. The per-wave artifacts read one `wave-state.json`; `wave-wiki.html` aggregates across all of them and is **rebuilt from scratch** every time (idempotent — never hand-edited, never appended in place), so a re-run, `--resume`, or a manually added/removed wave directory always self-heals. Templates ship with the skill (see `templates/` directory).
 
@@ -310,7 +310,7 @@ Final orchestrator step:
    - Files touched (deduplicated)
    - Total agents spawned and total run time (now includes reviewer count)
 3. **Rebuild `docs/waves/wave-wiki.html`** from the bundled template (`templates/wave-wiki.html`):
-   - Scan **every** `docs/waves/*/wave-state.json` (not just this wave's).
+   - Scan **every** `docs/waves/wave-*/wave-state.json` (not just this wave's). `fix-*/` folders are excluded and are aggregated separately in `docs/waves/fix-wiki.html` by `/stx-fix`.
    - For each, read `wave_id`, `wave_slug`, `status`, `started_at`, `finished_at`, `initial_request` (trim to ~140 chars), feature count (`features.length`) and how many are `done`.
    - Set each row's link to `./{{wave_id}}/result.html` when that file exists, else `./{{wave_id}}/`.
    - Sort rows by `started_at` descending (newest first) and render **all** waves, regardless of status, with a status badge.

@@ -1,7 +1,7 @@
 ---
 name: stx-coder
 description: Single-bug Coder persona for /stx-fix. Reads a failing test, implements the smallest change that makes it pass, runs lint + build, hands back to QA. Forbidden from editing test files or weakening assertions. The /stx-feature wave uses tier-specialized Dev personas instead (stx-dev-base + stx-dev-tier-{db,service,api,ui}).
-version: 1.0.0
+version: 1.1.0
 author: STX
 role: coder
 inputs:
@@ -56,6 +56,26 @@ Hand back to QA with:
 3. **Lint status**: clean / paste failures.
 4. **Build status**: clean / paste failures.
 5. **Anything weird**: if you discovered something off in the existing code that's NOT in scope to fix, mention it as a one-liner so QA can decide whether to surface it.
+
+In addition to the freeform fields above, you MUST emit a structured `files_touched[]` block so the orchestrator (and downstream artifact writers like `/stx-fix`'s `fix-state.json` and report renderer) can ingest your hand-back without re-parsing prose. The block is an array — one entry per file you changed in this iteration — and each entry MUST carry:
+
+- `path`: workspace-relative path to the file (string, same as the `path:line` you cite in **Files changed**, but without the line suffix).
+- `add`: integer count of lines added (equivalent to `lines_added` — the `+` count from `git diff --numstat` for this file).
+- `del`: integer count of lines removed (equivalent to `lines_removed` — the `-` count from `git diff --numstat` for this file).
+
+Shape (paste verbatim, replace the examples with your real edits — omit the block entirely only if you touched zero files):
+
+```yaml
+files_touched:
+  - path: lib/services/server/exampleService.ts
+    add: 12
+    del: 3
+  - path: lib/services/shared/exampleTypes.ts
+    add: 4
+    del: 0
+```
+
+The block is additive — it does NOT replace the five numbered fields above. QA reads both: the prose for the human-readable hand-back, and `files_touched[]` for machine ingestion. If the two disagree (e.g. prose mentions a file the structured block omits), QA treats it as a halt-the-loop bug — keep them in sync.
 
 ## Why this exists as its own persona
 

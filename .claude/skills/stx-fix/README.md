@@ -68,6 +68,19 @@ See `docs/temp/REQ-worktree-enforcement-and-cursor-integration.md`.
 
 The skill doesn't shell out to those automatically — it surfaces them as the recommended next step in §9 of the rendered prompt.
 
+## Per-fix artifacts (v1.3+)
+
+Every `/stx-fix` run now writes a dedicated per-fix folder under `docs/waves/`, mirroring the shape `/stx-feature` already uses for wave artifacts. The folder name is derived from the `title` field (slugged):
+
+- `docs/waves/fix-{slug}/fix-state.json` — machine-readable state of the loop (iteration count, halt reason, agent invocations, test pass/fail history). This is what tooling reads.
+- `docs/waves/fix-{slug}/fix-report.html` — the human-facing single-file HTML report for the fix: what the bug was, the failing test QA wrote, the iterations the Coder went through, and the final diff. Open it in a browser.
+
+A cross-fix index sits one level up:
+
+- `docs/waves/fix-wiki.html` — a rolling index of every `/stx-fix` run in the repo, newest first. Useful for "what bugs have we fixed in this codebase?" and for finding the right `fix-{slug}` folder without listing the directory.
+
+These artifacts are produced by the skill itself; nothing else in the loop needs to know about them. They survive worktree cleanup because they live under `docs/`, which is tracked.
+
 ## What the skill explicitly does NOT do
 
 - It does **not** investigate the bug for the user. The repro and expected behavior are required inputs; the skill won't infer them from a vague report.
