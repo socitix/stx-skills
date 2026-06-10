@@ -38,6 +38,8 @@ const MD_BEGIN = "<!-- BEGIN AUTO: stx-help listing — generated from .claude/s
 const MD_END = "<!-- END AUTO -->";
 const HTML_BEGIN = "<!-- BEGIN AUTO: skill cards — generated from .claude/skills/*/catalog.json by `npm run build` -->";
 const HTML_END = "<!-- END AUTO -->";
+const STATS_BEGIN = "<!-- BEGIN AUTO: cover stats — generated from .claude/skills/*/catalog.json + package.json by `npm run build` -->";
+const STATS_END = "<!-- END AUTO: cover stats -->";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -341,6 +343,25 @@ function renderCardsBlock(catalogs: Catalog[]): string {
   return catalogs.map(renderCard).join("\n\n");
 }
 
+/**
+ * Cover dashboard stats — three skill sections (by zone) plus the package
+ * version. Derived from catalogs so the tiles can never drift from reality:
+ *   main → "Primary skills", worktree → "Worktree skills", any → "Helper skills".
+ * Planned skills are excluded (not shipped).
+ */
+function renderCoverStats(catalogs: Catalog[], pkgVersion: string): string {
+  const shipped = catalogs.filter((c) => c.zone !== "planned");
+  const primary = shipped.filter((c) => c.zone === "main").length;
+  const worktree = shipped.filter((c) => c.zone === "worktree").length;
+  const helper = shipped.filter((c) => c.zone === "any").length;
+  return [
+    `      <div class="stat"><span class="n">${primary}</span><span class="l">Primary skills</span></div>`,
+    `      <div class="stat"><span class="n teal">${worktree}</span><span class="l">Worktree skills</span></div>`,
+    `      <div class="stat"><span class="n green">${helper}</span><span class="l">Helper skills</span></div>`,
+    `      <div class="stat"><span class="n gold">v${pkgVersion}</span><span class="l">Current release</span></div>`,
+  ].join("\n");
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Step 4: rewrite the AUTO regions and detect drift
 // ────────────────────────────────────────────────────────────────────────────
@@ -351,15 +372,27 @@ function renderCardsBlock(catalogs: Catalog[]): string {
  * be marked up first (see the AUTO-markers task).
  */
 function replaceAutoRegion(file: string, begin: string, end: string, replacement: string): string {
-  const src = fs.readFileSync(file, "utf8");
+  return replaceAutoRegionInString(fs.readFileSync(file, "utf8"), file, begin, end, replacement);
+}
+
+function replaceAutoRegionInString(src: string, label: string, begin: string, end: string, replacement: string): string {
   const bi = src.indexOf(begin);
   const ei = src.indexOf(end);
   if (bi === -1 || ei === -1 || ei <= bi) {
-    throw new Error(`AUTO markers not found in ${file}. Expected:\n  ${begin}\n  …\n  ${end}`);
+    throw new Error(`AUTO markers not found in ${label}. Expected:\n  ${begin}\n  …\n  ${end}`);
   }
   const before = src.slice(0, bi + begin.length);
   const after = src.slice(ei);
   return `${before}\n${replacement}\n${after}`;
+}
+
+/**
+ * Sync every `<span class="pkg-version">…</span>` in the document to the
+ * package.json version, so hand-maintained regions (footer colophon, etc.)
+ * can reference the release without ever drifting from it.
+ */
+function syncPkgVersionSpans(src: string, pkgVersion: string): string {
+  return src.replace(/(<span class="pkg-version">)[^<]*(<\/span>)/g, `$1v${pkgVersion}$2`);
 }
 
 interface DiffEntry {
@@ -394,9 +427,11 @@ function main() {
   const mdNext = replaceAutoRegion(HELP_MD, MD_BEGIN, MD_END, "```\n" + terminal + "\n```");
   const mdEntry = writeIfChanged(HELP_MD, mdNext, check);
 
-  // ─ HTML cards (in help.html) ─────────────────────────────────────────────
+  // ─ HTML cards + cover stats + version spans (in help.html) ──────────────
   const cards = renderCardsBlock(catalogs);
-  const htmlNext = replaceAutoRegion(HELP_HTML, HTML_BEGIN, HTML_END, cards);
+  let htmlNext = replaceAutoRegion(HELP_HTML, HTML_BEGIN, HTML_END, cards);
+  htmlNext = replaceAutoRegionInString(htmlNext, HELP_HTML, STATS_BEGIN, STATS_END, renderCoverStats(catalogs, pkg.version));
+  htmlNext = syncPkgVersionSpans(htmlNext, pkg.version);
   const htmlEntry = writeIfChanged(HELP_HTML, htmlNext, check);
 
   // ─ Repo-root index.html (mirror of help.html) ────────────────────────────
