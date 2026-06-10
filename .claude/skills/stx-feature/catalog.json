@@ -2,7 +2,7 @@
   "$schema": "../catalog.schema.json",
   "name": "stx-feature",
   "slash": "/stx-feature",
-  "version": "1.4.0",
+  "version": "1.11.0",
   "zone": "main",
   "icon": "F",
   "terminal": {
@@ -13,8 +13,8 @@
     ]
   },
   "card": {
-    "summary": "Multi-agent feature wave. Analyst → Architect → QA → Dev with Reviewer gate between Dev and QA (v1.4). Three approval gates, tier-specialized Devs, suspicious-change tracking, reviewer_verdicts[] trail. <code>--autonomous</code> mode auto-approves all gates for unattended runs (never commits). Personas live in <code>.claude/agents/</code>.",
-    "paragraph": "Drives a multi-agent feature wave. Spawns a worktree, runs Analyst → Architect → QA in sequence (each behind a user gate unless <code>--autonomous</code>), then dispatches tier-specialized Dev agents under QA control until all tests are green.",
+    "summary": "Multi-agent feature wave. Analyst → Architect → QA → Dev with Reviewer gate between Dev and QA. Three approval gates, orchestrator-run interviews (subagents can't reach the user), tier-specialized Devs, suspicious-change tracking, reviewer_verdicts[] trail. <code>--autonomous</code> mode auto-approves all gates for unattended runs (never commits). Personas live in <code>.claude/agents/</code>.",
+    "paragraph": "Drives a multi-agent feature wave. Spawns a worktree, interviews the user up front (orchestrator-run — agents that hit a blocking ambiguity hand back an <code>open_questions[]</code> block instead of asking directly), runs Analyst → Architect → QA in sequence (each behind a user gate unless <code>--autonomous</code>), then dispatches tier-specialized Dev agents under QA control until all tests are green.",
     "use_when": [
       "Feature decomposes into multiple tasks across tiers",
       "You want failing tests written before any code",

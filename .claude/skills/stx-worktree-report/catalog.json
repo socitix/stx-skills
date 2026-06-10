@@ -2,7 +2,7 @@
   "$schema": "../catalog.schema.json",
   "name": "stx-worktree-report",
   "slash": "/stx-worktree-report",
-  "version": "1.0.0",
+  "version": "1.11.0",
   "zone": "worktree",
   "icon": "R",
   "terminal": {

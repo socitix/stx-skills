@@ -1,7 +1,7 @@
 ---
 name: stx-version-bump
 description: Standalone SemVer bump for the current repo — reads package.json (or a --version-file), infers a conservative level from the Conventional-Commits subject (feat:/fix:/perf: → patch; feat!:/BREAKING → major; everything else → none), writes the bump, creates a separate "chore(release): bump version to X.Y.Z" commit, and tags it locally. Does NOT push. Use when you forgot to bump in the last shipped PR, want to override the auto-inference, or are aggregating several feature PRs into a single release commit.
-version: 1.0.0
+version: 1.11.0
 author: STX
 zone: any
 ---

@@ -1,7 +1,7 @@
 ---
 name: stx-checkin
 description: Secure git workflow with pre-commit security scanning, staging, commit, and branch-aware push/PR creation
-version: 1.0.0
+version: 1.11.0
 author: STX
 ---
 

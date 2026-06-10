@@ -2,7 +2,7 @@
   "$schema": "../catalog.schema.json",
   "name": "stx-help-html",
   "slash": "/stx-help-html",
-  "version": "1.0.0",
+  "version": "1.11.0",
   "zone": "any",
   "icon": "D",
   "terminal": {

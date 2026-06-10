@@ -2,7 +2,7 @@
   "$schema": "../catalog.schema.json",
   "name": "stx-checkin",
   "slash": "/stx-checkin",
-  "version": "1.0.0",
+  "version": "1.11.0",
   "zone": "any",
   "icon": "C",
   "terminal": {

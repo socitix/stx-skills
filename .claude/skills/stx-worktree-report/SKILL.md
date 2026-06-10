@@ -1,7 +1,7 @@
 ---
 name: stx-worktree-report
 description: Generate a polished single-file HTML report explaining the changes made in a git worktree (or branch). Renders an executive summary, approach trade-off table, architecture diagrams (Mermaid), per-file diffs, test results, and deferred caveats — using the embedded template in this skill so every report has a consistent shape.
-version: 1.0.0
+version: 1.11.0
 author: STX
 ---
 

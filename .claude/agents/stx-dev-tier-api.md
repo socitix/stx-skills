@@ -1,7 +1,7 @@
 ---
 name: stx-dev-tier-api
 description: API-tier Dev prelude for /stx-feature waves. Overrides stx-dev-base with rules for thin route handlers, auth, Zod validation, response shape, status codes, and idempotency on write routes. Spawned when task.tier == "api".
-version: 1.0.0
+version: 1.11.0
 author: STX
 role: dev-tier
 tier: api
