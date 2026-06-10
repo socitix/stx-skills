@@ -1,7 +1,7 @@
 ---
 name: stx-dev-tier-service
 description: Service-tier Dev prelude for /stx-feature waves. Overrides stx-dev-base with rules for the three-tier service pattern, result shapes, and error handling. Spawned when task.tier == "service".
-version: 1.0.0
+version: 1.10.4
 author: STX
 role: dev-tier
 tier: service

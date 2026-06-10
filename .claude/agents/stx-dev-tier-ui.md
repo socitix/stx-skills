@@ -1,7 +1,7 @@
 ---
 name: stx-dev-tier-ui
 description: UI-tier Dev prelude for /stx-feature waves. Overrides stx-dev-base with rules for React + Tailwind + shadcn, a11y, mobile-first responsive, graceful form validation, destructive-action confirmations, and browser verification. Spawned when task.tier == "ui".
-version: 1.0.0
+version: 1.10.4
 author: STX
 role: dev-tier
 tier: ui

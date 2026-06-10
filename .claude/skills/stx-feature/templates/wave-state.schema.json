@@ -59,6 +59,22 @@
         }
       }
     },
+    "interviews": {
+      "type": "array",
+      "description": "Orchestrator-run user interviews (subagents cannot reach the user). One row per round: the Step 2 up-front requirement interview plus any open-questions round an agent returned (max 2 rounds per agent per step). Absent in --autonomous waves.",
+      "items": {
+        "type": "object",
+        "required": ["step", "agent", "round", "questions", "answers", "at"],
+        "properties": {
+          "step": { "type": "integer", "minimum": 2, "maximum": 4 },
+          "agent": { "enum": ["orchestrator", "analyst", "architect", "qa"] },
+          "round": { "type": "integer", "minimum": 0, "description": "0 = the up-front Step 2 interview; 1..2 = open-questions rounds." },
+          "questions": { "type": "array", "items": { "type": "string" } },
+          "answers": { "type": "array", "items": { "type": "string" } },
+          "at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
     "out_of_scope": {
       "type": "array",
       "items": { "type": "string" },

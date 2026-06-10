@@ -10,13 +10,14 @@
     "stx-version-bump": "./dist/skills/stx-version-bump.js",
     "stx-image": "./dist/skills/stx-image.js",
     "stx-worktree-report": "./dist/skills/stx-worktree-report.js",
-    "stx-generate-help": "./dist/cli/generate-help.js"
+    "stx-generate-help": "./dist/cli/generate-help.js",
+    "stx-sync-versions": "./dist/cli/sync-versions.js"
   },
   "scripts": {
-    "build": "tsc && node dist/cli/generate-help.js",
+    "build": "tsc && node dist/cli/sync-versions.js && node dist/cli/generate-help.js",
     "watch": "tsc --watch",
     "clean": "rm -rf dist",
-    "check-docs": "tsc && node dist/cli/generate-help.js --check",
+    "check-docs": "tsc && node dist/cli/sync-versions.js --check && node dist/cli/generate-help.js --check",
     "prepare": "npm run build",
     "prepublishOnly": "npm run build"
   },

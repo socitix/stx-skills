@@ -1,7 +1,7 @@
 ---
 name: stx-image
 description: Analyze project images for AI-context-safe sizing. Reports unused and oversized images with target sizes and reasons, then optionally resizes via sips or deletes unused.
-version: 1.0.0
+version: 1.10.4
 author: STX
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: stx-fix
 description: Drives a two-agent QA → Coder loop against a known bug (or small cluster of related bugs). Interviews the user to fill the prompt template, confirms the worktree state, presents the rendered prompt for explicit user acceptance, then kicks off the loop. Use when the user has a reproducible bug and wants a failing test written first, then the smallest code change that makes it pass. Supports --autonomous to auto-approve the acceptance gate and optional-field interview (still halts on destructive ops, commits, and pushes). Writes a per-fix folder under docs/waves/fix-{slug}/ containing fix-report.html and fix-state.json, plus a top-level docs/waves/fix-wiki.html index across all fixes.
-version: 1.3.0
+version: 1.10.4
 author: STX
 ---
 

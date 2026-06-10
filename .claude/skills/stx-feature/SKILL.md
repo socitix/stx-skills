@@ -1,7 +1,7 @@
 ---
 name: stx-feature
 description: Drives a multi-agent feature implementation wave. Interviews the user, runs Analyst → Architect → QA in sequence (each behind a gate), then schedules tier-specialized Dev agents under a Reviewer + QA control loop. Produces requirement-verse.html, architecture-verse.html, qa-verse.html, and result.html artifacts in docs/waves/, plus a cross-wave wave-wiki.html index. Use when a new feature (multi-task, possibly multi-tier) needs to be implemented, not a single bug fix. Supports --autonomous to auto-approve all interactive gates (still halts on destructive ops, commits, and pushes).
-version: 1.4.0
+version: 1.10.4
 author: STX
 ---
 
@@ -57,8 +57,8 @@ When the user invokes the skill with `--autonomous`, the orchestrator treats eve
 
 - Step 0 worktree confirmation when already on a non-`main` branch.
 - Step 0 worktree creation when on `main` — the orchestrator picks a slug from `initial_request` and proceeds (no `AskUserQuestion`).
-- The Analyst's interview round (Step 2) — the Analyst is told `autonomous: true` and decomposes `initial_request` using best judgment instead of interviewing.
-- The Architect's interview round (Step 3) — Architect is told `autonomous: true` and proceeds on the approved `requirement-verse.html` without further questions.
+- The orchestrator's requirement interview (Step 2) — skipped entirely; the Analyst is told `autonomous: true` and decomposes `initial_request` using best judgment, recording assumptions on each Feature card.
+- All open-questions rounds (Steps 2–4) — agents are told `autonomous: true` and resolve gaps with documented best-judgment assumptions instead of returning `open_questions[]`.
 - **Gate 1** (`requirement-verse.html`), **Gate 2** (`architecture-verse.html`), **Gate 3** (`qa-verse.html`) — auto-approved; each gate is still logged into `wave-state.json.gates[]` with `auto_approved: true` and a UTC timestamp.
 - The "stop at dry-run vs continue past dry-run" question — defaults to **continue past dry-run**.
 - The "concurrency cap" question — defaults to **3** (unless overridden via `--concurrency=N`).
@@ -117,6 +117,19 @@ HTML is rendered from `wave-state.json` after every state change — JSON is can
 
 Strict ordering. Three approval gates. The skill never starts a phase without the previous phase's gate being explicitly approved.
 
+### Interviews & the open-questions protocol (orchestrator-run)
+
+**Subagents cannot reach the user.** `AskUserQuestion` depends on the main conversation and is unavailable inside spawned agents — so every user interaction in this workflow happens here, in the orchestrator, never inside the Analyst / Architect / QA. Two mechanisms:
+
+1. **Up-front interview (Step 2 only).** Before spawning the Analyst, the orchestrator interviews the user via `AskUserQuestion` (grouped 2–4 questions per call) and appends the full Q&A transcript to the Analyst's spawn prompt.
+2. **Open-questions rounds (any of Steps 2–4).** An agent that hits a blocking ambiguity stops without writing its artifact and returns a structured `open_questions[]` block (format defined in each persona file). The orchestrator then:
+   - asks the user each question via `AskUserQuestion` (grouped, using the agent's `options` where given),
+   - re-invokes the same persona with the original prompt **plus** the accumulated Q&A transcript appended under `## Interview transcript`,
+   - records the round in `wave-state.json.interviews[]` as `{ step, agent, round, questions[], answers[], at }`.
+   - **Cap: 2 open-question rounds per agent per step.** A third round means the request is under-specified — halt the wave and surface the unresolved questions to the user instead of looping.
+
+**`--autonomous`:** both mechanisms are disabled — no up-front interview, and agents are told `autonomous: true` (personas then make best-judgment assumptions inline instead of returning `open_questions[]`).
+
 ### Step 0 — Confirm worktree state
 
 Before any other question:
@@ -172,33 +185,46 @@ If so, take the argument as `initial_request`. Otherwise, ask the user one open 
 
 This is the **seed** for everything downstream. Subsequent agents add clarity; they do not replace it.
 
-Also at this step: record the persona versions that will drive the wave. Read the YAML frontmatter of every persona file under `.claude/agents/` and write a `persona_versions` block to `wave-state.json`. Also write `worktree_path`, `branch`, and `main_worktree_path` from Step 0.5:
+Also at this step: record the persona versions that will drive the wave. Read the YAML frontmatter of every persona file under `.claude/agents/` and write a `persona_versions` block to `wave-state.json`. Also write `worktree_path`, `branch`, and `main_worktree_path` from Step 0.5. Since the package uses **unified versioning** (every skill and persona is stamped with the `package.json` version by `npm run build`), all entries normally show the same release version — the block still records what was actually read from each file, so a drifted install is visible:
 
 ```json
 "persona_versions": {
-  "analyst": "1.0.0",
-  "architect": "1.0.0",
-  "qa": "1.0.0",
-  "reviewer": "1.0.0",
-  "dev_base": "1.0.0",
-  "dev_tier_db": "1.0.0",
-  "dev_tier_service": "1.0.0",
-  "dev_tier_api": "1.0.0",
-  "dev_tier_ui": "1.0.0"
+  "analyst": "1.11.0",
+  "architect": "1.11.0",
+  "qa": "1.11.0",
+  "reviewer": "1.11.0",
+  "dev_base": "1.11.0",
+  "dev_tier_db": "1.11.0",
+  "dev_tier_service": "1.11.0",
+  "dev_tier_api": "1.11.0",
+  "dev_tier_ui": "1.11.0"
 }
 ```
 
-This locks the wave to a specific persona snapshot — essential for future cross-wave metrics aggregation.
+This locks the wave to a specific release snapshot — essential for future cross-wave metrics aggregation.
 
-### Step 2 — Analyst (Agent 1)
+### Step 2 — Requirement interview, then Analyst (Agent 1)
+
+**Interview first (orchestrator, not the Analyst).** Before spawning, interview the user via `AskUserQuestion` — grouped 2–4 questions per call — covering:
+
+- What problem is this feature solving?
+- Who is the user / actor?
+- Acceptance criteria per feature (one numbered list per feature).
+- Blast radius from the **existing system** point of view (which user flows, which data shapes, which permissions).
+- Out-of-scope items (explicit non-goals).
+
+Record the Q&A transcript to `wave-state.json.interviews[]`.
 
 **Spawn:** `Agent` with `subagent_type: general-purpose` (or `Explore` for read-only research first if scoping is unclear). Prepend the **Worktree** block from Step 0.5, paste the contents of `.claude/agents/stx-analyst.md` into the agent's prompt verbatim, then append:
 
 > The current wave-state is at `<path-to-wave-state.json>`. The initial request is: `<initial_request>`. The bundled template for requirement-verse.html is at `<path-to-templates/requirement-verse.html>`.
+>
+> ## Interview transcript
+> `<the full Q&A from the orchestrator-run interview>`
 
-The Analyst follows the contract in its persona file. Do not embed contract logic here.
+The Analyst follows the contract in its persona file. Do not embed contract logic here. If the Analyst hands back an `open_questions[]` block instead of Features, run an open-questions round per the protocol above (ask the user, re-invoke with the extended transcript; max 2 rounds, then halt).
 
-In **`--autonomous`** mode, also append: `autonomous: true. Do NOT interview the user; decompose the initial_request using your best judgment and render requirement-verse.html.`
+In **`--autonomous`** mode, skip the up-front interview entirely and append instead: `autonomous: true. There is no interview transcript; decompose the initial_request using your best judgment, record assumptions on each Feature card, and do NOT return open_questions[].`
 
 ★ **Gate 1: user approves `requirement-verse.html`.** Use `AskUserQuestion` with three options: *Approve*, *Edit a feature*, *Cancel wave*. Do not proceed without explicit approval.
 
@@ -210,9 +236,9 @@ In **`--autonomous`** mode, also append: `autonomous: true. Do NOT interview the
 
 > The approved requirement-verse.html is at `<path>`. The current wave-state is at `<path>`. The bundled template for architecture-verse.html is at `<path>`.
 
-The Architect follows the contract in its persona file.
+The Architect follows the contract in its persona file. If the Architect hands back an `open_questions[]` block (implementation-strategy gaps) instead of Tasks, run an open-questions round per the protocol above (ask the user, re-invoke with the Q&A appended under `## Interview transcript`; max 2 rounds, then halt).
 
-In **`--autonomous`** mode, also append: `autonomous: true. Do NOT interview the user; resolve any implementation gaps using best judgment and document each assumption inline in architecture-verse.html under "Autonomous assumptions" per Feature.`
+In **`--autonomous`** mode, also append: `autonomous: true. Do NOT return open_questions[]; resolve any implementation gaps using best judgment and document each assumption inline in architecture-verse.html under "Autonomous assumptions" per Feature.`
 
 ★ **Gate 2: user approves `architecture-verse.html`.** Scope is now FROZEN — anything not listed in tasks or marked in scope_paths is off-limits for the wave.
 
@@ -224,7 +250,7 @@ In **`--autonomous`** mode, also append: `autonomous: true. Do NOT interview the
 
 > The approved requirement-verse.html and architecture-verse.html are at `<paths>`. The current wave-state is at `<path>`. The bundled template for qa-verse.html is at `<path>`.
 
-The QA agent follows the **authoring contract** section of its persona file.
+The QA agent follows the **authoring contract** section of its persona file. If QA hands back an `open_questions[]` block (e.g. requesting approval to scaffold Vitest), run an open-questions round per the protocol above — scaffolding approval is a user decision the orchestrator collects via `AskUserQuestion`, never the subagent.
 
 ★ **Gate 3 (Dry-run boundary): user approves `qa-verse.html` AND the failing tests.** This is the most expensive gate to fail past — failing tests that encode the wrong acceptance criteria poison the rest of the wave.
 
@@ -333,7 +359,8 @@ The skill stops and surfaces — never silently continues — when:
 - Worktree state cannot be confirmed (detached HEAD, no git, etc.).
 - A persona file under `.claude/agents/` cannot be read at spawn time (treat as a fatal config error — do not fall back to inline prompts).
 - The user declines any of the three gates.
-- The Analyst cannot extract features from the initial_request (vague request — surfaces a clarifying interview round).
+- The Analyst cannot extract features from the initial_request (vague request — surfaces a clarifying interview round, run by the orchestrator).
+- An agent's `open_questions[]` rounds exceed the cap (2 per agent per step) — the request is under-specified; halt and surface the unresolved questions.
 - The Architect cannot tier a task (`tier == "unknown"` → halt, ask user).
 - The QA agent cannot write a test for a task (timing-sensitive, infra-dependent) — QA documents *why* and proposes manual verification; orchestrator surfaces this rather than silently skipping.
 - A Dev agent edits a test file or touches files outside `scope_paths`.

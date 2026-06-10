@@ -1,7 +1,7 @@
 ---
 name: stx-help
 description: Print a terse in-terminal usage summary for the STX Skills package — every shipped skill with a one-line purpose, grouped by where you run it (main / worktree / any). Ends with a one-line pointer to /stx-help-html for the visual walkthrough with diagrams. Use when the user wants a quick reference without opening a browser.
-version: 1.0.0
+version: 1.10.4
 author: STX
 zone: any
 ---

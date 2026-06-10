@@ -4,7 +4,7 @@ Organization-wide [Claude Code](https://docs.claude.com/en/docs/claude-code) and
 
 📖 **[Open the walkthrough →](https://socitix.github.io/stx-skills/)** — full doc with diagrams, expandable skill catalog, settings reference.
 
-Current release: **v1.10.1** · MIT licensed.
+Current release: **v1.10.4** · MIT licensed.
 
 ---
 

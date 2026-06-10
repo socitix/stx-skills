@@ -31,7 +31,6 @@ those catalogs by `npm run build`.
 shipped skill, you must also update its `catalog.json` and run
 `npm run build`:**
 
-- `version` field in `SKILL.md` frontmatter
 - The skill's one-line `description` (frontmatter)
 - New or removed CLI flags / invocations
 - Renamed / added / removed sub-commands
@@ -48,12 +47,19 @@ every `npm run build`. Change the upstream `catalog.json` instead.
 ### The build pipeline
 
 ```
-.claude/skills/<name>/catalog.json   ← source of truth (one per skill)
+package.json version (single source of truth for ALL versions)
         │
-        │  npm run build  =  tsc && node dist/cli/generate-help.js
+        │  npm run build  =  tsc && node dist/cli/sync-versions.js
+        │                        && node dist/cli/generate-help.js
         ▼
+sync-versions stamps the version into:
+  .claude/skills/*/SKILL.md + catalog.json   (frontmatter / "version")
+  .claude/agents/*.md                        (frontmatter)
+  README.md                                  ("Current release" line)
+        │
+        ▼  generate-help renders from .claude/skills/*/catalog.json
 .claude/skills/stx-help/SKILL.md        (between AUTO markers)
-.claude/skills/stx-help-html/help.html  (between AUTO markers)
+.claude/skills/stx-help-html/help.html  (between AUTO markers + cover stats)
 index.html                              (repo root — mirror of help.html)
         │
         │  GitHub Pages: branch=main, path=/
@@ -63,14 +69,13 @@ https://socitix.github.io/stx-skills/
 
 ### Before any commit that touches a skill
 
-1. **Edit** `SKILL.md` and `catalog.json` together. The version field in both
-   must match; the build will fail if they drift.
-2. **Run** `npm run build`. This regenerates the three generated outputs
-   listed above.
-3. **Stage all of it** — `SKILL.md`, `catalog.json`, and the three
-   regenerated files — in the same commit. A PR that bumps `SKILL.md`
-   without the matching `catalog.json` + regenerated outputs will fail
-   the next `npm run check-docs`.
+1. **Edit** `SKILL.md` and `catalog.json` together. Never hand-edit any
+   `version:` field — the stamper owns every one of them.
+2. **Run** `npm run build`. This stamps the unified version everywhere and
+   regenerates the generated outputs listed above.
+3. **Stage all of it** — `SKILL.md`, `catalog.json`, and every
+   stamped/regenerated file — in the same commit. A PR that skips this
+   will fail the next `npm run check-docs`.
 
 ### Verification
 
@@ -116,11 +121,19 @@ different framings. Keep both updated; don't merge them.
 
 ## Versioning
 
-Each shipped skill carries its own SemVer in `SKILL.md` frontmatter and
-`catalog.json`. The repo's `package.json` version (`stx-skills`) is the
-installer/CLI version — independent of any single skill. Bump the
-package version when the installer, generator, or shipped CLIs change;
-bump a skill version when its `SKILL.md` semantics change.
+**Unified versioning — one number for everything.** The `package.json`
+version is the single source of truth; every shipped skill (`SKILL.md`
+frontmatter + `catalog.json`) and every persona (`.claude/agents/*.md`
+frontmatter) carries that same version, stamped by
+`node dist/cli/sync-versions.js` as part of `npm run build`. The npx
+install/update flow therefore always ships a self-consistent set.
+
+- Bump `package.json` once per release (the `/stx-pr-merge` bump step or
+  `/stx-version-bump`), pick the level from the most significant change
+  in the release, then run `npm run build` and stage every stamped file
+  in the bump commit.
+- Never hand-edit a `version:` field anywhere — `npm run check-docs`
+  fails on drift.
 
 ## See also
 

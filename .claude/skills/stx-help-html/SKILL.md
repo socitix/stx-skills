@@ -1,7 +1,7 @@
 ---
 name: stx-help-html
 description: Open the STX Skills walkthrough documentation in your default browser. Single-file HTML covering the 5-minute tour, the three-zone (main / worktree / any) model, the worktree lifecycle, an expandable skill catalog, the settings reference, and the pending-features backlog. Use when the user asks for help, an overview, or a walkthrough of the skills, or when explaining the workflow to a teammate.
-version: 1.0.0
+version: 1.10.4
 author: STX
 zone: any
 ---

@@ -1,7 +1,7 @@
 ---
 name: stx-pr-merge
 description: End-to-end feature-branch workflow — commit, version-bump (conservative auto-infer; feat:/fix:/perf: → patch, feat!:/BREAKING → major, else none), push, open PR, build-validate, squash-merge, refresh main, tag vX.Y.Z and push tag, build-validate again, then clean up the worktree and branch. Halts on any step failure for user review. Records /stx-feature wave token+time usage at close-out.
-version: 1.2.0
+version: 1.10.4
 author: STX
 ---
 
