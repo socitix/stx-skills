@@ -695,39 +695,59 @@
     background: #fff;
   }
 
-  /* ─────── Fable 5 "Coming Soon" announcement banner ─────── */
-  .fable5-banner {
-    display: flex; align-items: center; justify-content: center; gap: 14px;
-    flex-wrap: wrap;
-    padding: 13px 36px;
-    background: linear-gradient(90deg, #221503 0%, #5c3d10 50%, #221503 100%);
+  /* ─────── Fable 5 "Coming Soon" center-stage announcement ─────── */
+  .fable5-feature {
+    display: block;
+    margin: 38px 0 46px;
+    padding: 36px 40px;
+    background: linear-gradient(135deg, #221503 0%, #4a3009 55%, #5c3d10 100%);
+    border: 1px solid var(--gold);
+    border-radius: 10px;
     color: #f4ead2; text-decoration: none;
-    font-size: 14px; line-height: 1.4;
-    border-bottom: 2px solid var(--gold);
+    position: relative; overflow: hidden;
+    box-shadow: var(--shadow);
   }
-  .fable5-banner:hover .f5-msg { text-decoration: underline; text-underline-offset: 3px; }
+  .fable5-feature::after {
+    content: ""; position: absolute; inset: 0;
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0);
+    background-size: 26px 26px; pointer-events: none;
+  }
+  .fable5-feature > * { position: relative; z-index: 1; }
+  .fable5-feature h3 {
+    font-family: "Fraunces", serif; font-weight: 600;
+    font-size: clamp(22px, 3vw, 32px);
+    line-height: 1.15; letter-spacing: -0.01em;
+    margin: 14px 0 10px; color: #fff;
+  }
+  .fable5-feature h3 em { color: #ffd98a; }
+  .fable5-feature p {
+    margin: 0 0 20px; font-size: 15px; line-height: 1.6;
+    color: #e8dcc0; max-width: 780px;
+  }
+  .fable5-feature p strong { color: #ffd98a; }
   .f5-pill {
+    display: inline-block;
     background: var(--gold); color: #1b1206;
     font-weight: 700; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
     padding: 3px 11px; border-radius: 20px; white-space: nowrap;
     animation: f5pulse 1.8s ease-in-out infinite;
   }
-  .f5-msg strong { color: #ffd98a; }
-  .f5-arrow { color: var(--gold); font-weight: 700; }
+  .f5-cta {
+    display: inline-block;
+    background: var(--gold); color: #1b1206;
+    font-weight: 700; font-size: 13.5px;
+    padding: 9px 18px; border-radius: 6px;
+    transition: filter 0.15s ease;
+  }
+  .fable5-feature:hover .f5-cta { filter: brightness(1.12); }
   @keyframes f5pulse {
     0%, 100% { box-shadow: 0 0 0 0 rgba(184, 137, 58, 0.55); }
     50%      { box-shadow: 0 0 0 7px rgba(184, 137, 58, 0); }
   }
+  @media (max-width: 600px) { .fable5-feature { padding: 26px 22px; } }
 </style>
 </head>
 <body>
-
-<!-- ─────── Fable 5 "Coming Soon" announcement banner ─────── -->
-<a class="fable5-banner" href="docs/fable5-stx-workflow-skills-audit.html">
-  <span class="f5-pill">Coming&nbsp;Soon</span>
-  <span class="f5-msg"><strong>The Fable 5 update.</strong> We audited /stx-feature &amp; /stx-fix against the new Claude Code harness — read the full study</span>
-  <span class="f5-arrow">→</span>
-</a>
 
 <!-- ─────── Persistent editorial masthead (always visible) ─────── -->
 <header class="page-masthead" id="page-masthead">
@@ -784,6 +804,14 @@
         <li><a href="#pending">Pending features</a></li>
       </ol>
     </nav>
+
+    <!-- ─────── Fable 5 "Coming Soon" center-stage announcement ─────── -->
+    <a class="fable5-feature" href="docs/fable5-stx-workflow-skills-audit.html">
+      <span class="f5-pill">Coming&nbsp;Soon</span>
+      <h3>The Fable 5 update — <em>the wave survives</em></h3>
+      <p>We audited <strong>/stx-feature</strong> &amp; <strong>/stx-fix</strong> against the new Claude Code harness shipped with Fable 5: fifteen mechanics verified, one cracked beam found, and six tentative changes laid out before the real work ships.</p>
+      <span class="f5-cta">Read the full study →</span>
+    </a>
 
     <!-- ════════════════ §1 — WALKTHROUGH ════════════════ -->
     <section id="walkthrough">
