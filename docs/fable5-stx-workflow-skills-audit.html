@@ -138,16 +138,72 @@
   footer a{color:var(--gold)}
   .src{font-size:13px;color:var(--muted)}
   .src code{background:#eadfca;padding:1px 5px;border-radius:3px;font-size:12px}
+
+  /* ---------- FLOATING "BACK TO HOME" NAVIGATION ---------- */
+  .home-nav{
+    position:fixed;top:18px;left:18px;z-index:50;
+    display:inline-flex;align-items:center;gap:11px;
+    padding:8px 20px 8px 9px;
+    background:var(--paper);color:var(--ink);
+    border:1.5px solid var(--gold);border-radius:999px;
+    text-decoration:none;
+    font-family:"Helvetica Neue",Arial,sans-serif;
+    box-shadow:0 2px 0 rgba(21,19,15,.08),0 12px 26px -10px rgba(21,19,15,.38);
+    animation:homeNavIn .55s cubic-bezier(.2,.9,.3,1.25) .15s backwards;
+    transition:transform .18s ease,box-shadow .18s ease,background .18s ease;
+  }
+  .home-nav:hover{
+    transform:translateY(-2px);background:#fffdf6;
+    box-shadow:0 3px 0 rgba(21,19,15,.08),0 18px 34px -12px rgba(21,19,15,.5);
+  }
+  .home-nav:focus-visible{outline:3px solid var(--accent2);outline-offset:3px}
+  .home-nav .hn-disc{
+    display:flex;align-items:center;justify-content:center;flex:none;
+    width:28px;height:28px;border-radius:50%;
+    background:var(--gold);color:#1b1206;
+    font-size:15px;font-weight:700;line-height:1;
+    transition:transform .18s ease;
+  }
+  .home-nav:hover .hn-disc{transform:translateX(-3px)}
+  .home-nav .hn-kicker{
+    display:block;font-size:8.5px;font-weight:700;
+    letter-spacing:.24em;text-transform:uppercase;color:var(--muted);
+  }
+  .home-nav .hn-title{
+    display:block;font-size:11.5px;font-weight:700;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--ink);margin-top:1px;
+  }
+  @keyframes homeNavIn{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:none}}
+  @media(max-width:680px){.home-nav{top:12px;left:12px;padding:7px 15px 7px 8px}
+    .home-nav .hn-kicker{display:none}.home-nav .hn-disc{width:24px;height:24px;font-size:13px}}
+  @media print{.home-nav{display:none}}
+
+  /* footer ghost-pill variant of the home link */
+  .footer-home{
+    display:inline-flex;align-items:center;gap:9px;margin-top:16px;
+    padding:8px 18px;border:1px solid var(--gold);border-radius:999px;
+    color:var(--gold);text-decoration:none;
+    font-family:"Helvetica Neue",Arial,sans-serif;
+    font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+    transition:background .18s ease,color .18s ease;
+  }
+  .footer-home:hover{background:var(--gold);color:#1b1813}
 </style>
 </head>
 <body>
+
+<!-- ===================== FLOATING HOME NAVIGATION ===================== -->
+<a class="home-nav" href="../index.html" aria-label="Back to STX Skills home">
+  <span class="hn-disc" aria-hidden="true">←</span>
+  <span><span class="hn-kicker">Back&nbsp;to</span><span class="hn-title">STX Skills Home</span></span>
+</a>
 
 <!-- ===================== COVER ===================== -->
 <div class="cover">
   <div class="wrap">
     <div class="nameplate">
-      <span><a href="../index.html" style="color:inherit;text-decoration:none">← STX Skills Home</a></span>
-      <span>The STX Dispatch · Skills Audit · No. 1</span>
+      <span>The STX Dispatch</span>
+      <span>Skills Audit · No. 1</span>
       <span>June 9, 2026</span>
     </div>
     <p class="kicker" style="color:var(--gold)">A Relevance Audit</p>
@@ -358,7 +414,8 @@
 </div></section>
 
 <footer><div class="wrap">
-  <p><b style="color:#f0e6cd">The STX Dispatch</b> — compiled June 9, 2026 by a read-only audit session (Claude Code, Fable 5). No skill, persona, or catalog file was modified. <a href="../index.html">← Back to STX Skills home</a></p>
+  <p><b style="color:#f0e6cd">The STX Dispatch</b> — compiled June 9, 2026 by a read-only audit session (Claude Code, Fable 5). No skill, persona, or catalog file was modified.</p>
+  <a class="footer-home" href="../index.html"><span aria-hidden="true">←</span> Back to STX Skills Home</a>
   <p class="src" style="color:#9a8e72">Primary sources: <code style="background:#2a241b;color:#cdbf9c">.claude/skills/stx-feature/SKILL.md (v1.4.0)</code> <code style="background:#2a241b;color:#cdbf9c">.claude/skills/stx-fix/SKILL.md (v1.3.0)</code> <code style="background:#2a241b;color:#cdbf9c">.claude/agents/stx-{analyst,architect,qa,reviewer,coder,dev-*}.md</code> <code style="background:#2a241b;color:#cdbf9c">code.claude.com/docs/en/{sub-agents,worktrees,workflows,skills,model-config}.md (2026-06-09)</code></p>
 </div></footer>
 
