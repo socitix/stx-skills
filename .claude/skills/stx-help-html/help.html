@@ -86,7 +86,7 @@
   }
 
   .dash {
-    display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
     background: rgba(255,255,255,0.05);
     border: 1px solid rgba(255,255,255,0.15);
     border-radius: 8px; padding: 18px;
@@ -608,6 +608,15 @@
     color: var(--gold);
     background: rgba(184,137,58,0.14);
   }
+  .page-masthead .pm-right { display: flex; align-items: center; gap: 10px; }
+  .page-masthead .pm-gh {
+    display: flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 6px;
+    color: rgba(255,255,255,0.6);
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+  .page-masthead .pm-gh:hover { color: #fff; background: rgba(255,255,255,0.08); }
+  .page-masthead .pm-gh svg { width: 17px; height: 17px; display: block; }
   @media (max-width: 760px) {
     .page-masthead .pm-nav { display: none; }
     .page-masthead .pm-sep, .page-masthead .pm-meta { display: none; }
@@ -755,17 +764,22 @@
     <div class="pm-brand">
       <span class="pm-logo">STX <span>Skills</span></span>
       <span class="pm-sep">·</span>
-      <span class="pm-meta">Walkthrough &amp; Reference · v1.9</span>
+      <span class="pm-meta">Walkthrough &amp; Reference</span>
     </div>
-    <nav class="pm-nav" aria-label="Section navigation">
-      <a href="#walkthrough" data-section="walkthrough" title="Walkthrough">01</a>
-      <a href="#types" data-section="types" title="Three types of commands">02</a>
-      <a href="#flows" data-section="flows" title="Features vs bug fixes">03</a>
-      <a href="#worktree" data-section="worktree" title="Worktree lifecycle">04</a>
-      <a href="#catalog" data-section="catalog" title="Skill catalog">05</a>
-      <a href="#settings" data-section="settings" title="Settings">06</a>
-      <a href="#pending" data-section="pending" title="Pending features">07</a>
-    </nav>
+    <div class="pm-right">
+      <nav class="pm-nav" aria-label="Section navigation">
+        <a href="#walkthrough" data-section="walkthrough" title="Walkthrough">01</a>
+        <a href="#types" data-section="types" title="Three types of commands">02</a>
+        <a href="#flows" data-section="flows" title="Features vs bug fixes">03</a>
+        <a href="#worktree" data-section="worktree" title="Worktree lifecycle">04</a>
+        <a href="#catalog" data-section="catalog" title="Skill catalog">05</a>
+        <a href="#settings" data-section="settings" title="Settings">06</a>
+        <a href="#pending" data-section="pending" title="Pending features">07</a>
+      </nav>
+      <a class="pm-gh" href="https://github.com/socitix/stx-skills" target="_blank" rel="noopener" aria-label="View stx-skills on GitHub (opens in a new tab)">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+      </a>
+    </div>
   </div>
 </header>
 
@@ -779,11 +793,12 @@
       commits, and PR merges — all built around the worktree model.
     </p>
     <div class="dash">
-      <div class="stat"><span class="n">9</span><span class="l">Skills shipped</span></div>
-      <div class="stat"><span class="n teal">10</span><span class="l">Personas</span></div>
-      <div class="stat"><span class="n green">2</span><span class="l">Skills consume them</span></div>
-      <div class="stat"><span class="n">5</span><span class="l">Any-bound</span></div>
-      <div class="stat"><span class="n gold">v1.9</span><span class="l">Current release</span></div>
+<!-- BEGIN AUTO: cover stats — generated from .claude/skills/*/catalog.json + package.json by `npm run build` -->
+      <div class="stat"><span class="n">2</span><span class="l">Primary skills</span></div>
+      <div class="stat"><span class="n teal">2</span><span class="l">Worktree skills</span></div>
+      <div class="stat"><span class="n green">6</span><span class="l">Helper skills</span></div>
+      <div class="stat"><span class="n gold">v1.10.4</span><span class="l">Current release</span></div>
+<!-- END AUTO: cover stats -->
     </div>
   </div>
 </header>
@@ -2241,7 +2256,7 @@
 
 <footer class="colophon">
   <div class="wrap">
-    <strong>STX Skills v1.6</strong> · Walkthrough &amp; Reference ·
+    <strong>STX Skills <span class="pkg-version">v1.10.4</span></strong> · Walkthrough &amp; Reference ·
     open with <code>/stx-help-html</code> · text-mode with <code>/stx-help</code>
   </div>
 </footer>
