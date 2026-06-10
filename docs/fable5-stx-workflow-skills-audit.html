@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fable 5 Relevance Audit — /stx-feature &amp; /stx-fix</title>
+<style>
+  :root{
+    --ink:#15130f; --paper:#f6f1e7; --paper2:#efe7d6;
+    --accent:#c0392b; --accent2:#1f6f5c; --gold:#b8860b;
+    --muted:#6b6358; --line:#d9cfbb;
+    --green:#1f7a4d; --amber:#b8860b; --red:#b13525; --grey:#8a8275;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:940px;margin:0 auto;padding:0 26px}
+  h1,h2,h3,.kicker,.nameplate,.stat-num,.dek,.byline,th{font-family:"Helvetica Neue",Arial,sans-serif}
+
+  /* ---------- COVER ---------- */
+  .cover{
+    background:linear-gradient(160deg,#1b1813 0%, #2a241b 55%, #3a2f1f 100%);
+    color:#f6f1e7; padding:54px 0 46px; border-bottom:6px double var(--gold);
+  }
+  .nameplate{
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:12px;letter-spacing:.32em;text-transform:uppercase;color:#cdbf9c;
+    border-bottom:1px solid #5a4d35;padding-bottom:12px;margin-bottom:34px;
+  }
+  .masthead{
+    font-family:"Iowan Old Style",Georgia,serif;
+    font-size:64px;line-height:1.02;font-weight:700;letter-spacing:-.5px;margin:0;
+    color:#f8f3e8;
+  }
+  .masthead .em{color:var(--gold);font-style:italic}
+  .dek{margin-top:18px;font-size:19px;color:#e2d6bd;max-width:660px;font-weight:300}
+  .byline{
+    margin-top:26px;font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;
+    color:#b6a883;display:flex;gap:22px;flex-wrap:wrap;
+  }
+  .byline b{color:#f0e6cd;font-weight:600}
+
+  /* ---------- VERDICT BANNER ---------- */
+  .verdict{
+    background:var(--accent2);color:#eafff6;text-align:center;
+    padding:20px 26px;font-family:"Helvetica Neue",Arial,sans-serif;
+  }
+  .verdict .big{font-size:15px;letter-spacing:.05em}
+  .verdict b{font-weight:700;border-bottom:2px solid rgba(255,255,255,.4)}
+
+  /* ---------- SECTION ---------- */
+  section{padding:44px 0;border-bottom:1px solid var(--line)}
+  .kicker{
+    font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--accent);
+    font-weight:700;margin-bottom:8px;
+  }
+  h2{font-size:34px;line-height:1.1;margin:.1em 0 .5em;letter-spacing:-.4px}
+  h3{font-size:21px;margin:1.4em 0 .3em}
+  p{font-size:17.5px}
+  .lead::first-letter{
+    float:left;font-family:Georgia,serif;font-size:74px;line-height:.72;
+    padding:6px 10px 0 0;color:var(--accent);font-weight:700;
+  }
+  .two-col{column-count:2;column-gap:34px}
+  @media(max-width:680px){.two-col{column-count:1}.masthead{font-size:42px}.dek{font-size:17px}}
+
+  /* ---------- STAT STRIP ---------- */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin:8px 0 0;
+    border:1px solid var(--line);background:var(--paper2)}
+  .stat{padding:22px 16px;text-align:center;border-right:1px solid var(--line)}
+  .stat:last-child{border-right:none}
+  .stat-num{font-size:40px;font-weight:800;line-height:1;color:var(--ink)}
+  .stat-num.g{color:var(--green)} .stat-num.a{color:var(--amber)} .stat-num.r{color:var(--red)}
+  .stat-lab{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:9px;
+    font-family:"Helvetica Neue",Arial,sans-serif}
+  @media(max-width:680px){.stats{grid-template-columns:repeat(2,1fr)}
+    .stat:nth-child(2){border-right:none}.stat{border-bottom:1px solid var(--line)}}
+
+  /* ---------- PROGRESS BAR ---------- */
+  .bar-wrap{margin:30px 0 6px}
+  .bar-track{height:30px;background:#e4dac4;border:1px solid var(--line);border-radius:3px;overflow:hidden;display:flex}
+  .seg{height:100%;display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-family:"Helvetica Neue",Arial,sans-serif;color:#fff;font-weight:600;letter-spacing:.04em}
+  .seg.done{background:var(--green)}
+  .seg.left{background:#cbb890;color:#5a4d2f}
+  .bar-key{display:flex;gap:22px;font-size:12.5px;color:var(--muted);margin-top:10px;
+    font-family:"Helvetica Neue",Arial,sans-serif}
+  .dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:6px;vertical-align:middle}
+
+  /* ---------- TABLE ---------- */
+  table{width:100%;border-collapse:collapse;font-size:14.5px;margin-top:12px;background:#fff}
+  th{background:var(--ink);color:#f6f1e7;text-align:left;padding:11px 12px;
+    font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+  td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:nth-child(even) td{background:#faf6ec}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;
+    font-family:"Helvetica Neue",Arial,sans-serif;letter-spacing:.03em;white-space:nowrap}
+  .pill.live{background:#dff3e7;color:var(--green);border:1px solid #a9d9bf}
+  .pill.wait{background:#fbf0d6;color:#8a6400;border:1px solid #e6cf94}
+  .pill.dead{background:#f7ddd7;color:var(--red);border:1px solid #e6b3a7}
+  .mono{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:12.5px;color:#473d2c}
+
+  /* ---------- CALLOUTS ---------- */
+  .pull{border-left:4px solid var(--gold);padding:6px 0 6px 22px;margin:30px 0;
+    font-size:25px;line-height:1.32;font-style:italic;color:#33291a}
+  .box{border:1px solid var(--line);background:var(--paper2);padding:22px 24px;margin:24px 0;border-radius:4px}
+  .box.warn{border-left:5px solid var(--accent);background:#fbf2ef}
+  .box.good{border-left:5px solid var(--accent2);background:#eef7f2}
+  .box h3{margin-top:0}
+  .tag{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;
+    font-family:"Helvetica Neue",Arial,sans-serif}
+  .tag.r{color:var(--accent)} .tag.g{color:var(--accent2)}
+
+  /* checklist */
+  ul.check{list-style:none;padding:0;margin:14px 0;font-size:16px}
+  ul.check li{padding:8px 0 8px 34px;position:relative;border-bottom:1px dotted var(--line)}
+  ul.check li::before{position:absolute;left:0;top:7px;font-size:18px;font-family:"Helvetica Neue",Arial,sans-serif}
+  ul.check li.x::before{content:"✔";color:var(--green);font-weight:700}
+  ul.check li.o::before{content:"○";color:var(--amber);font-weight:700}
+  ul.check li.dot::before{content:"•";color:var(--muted);font-weight:700;font-size:22px;top:2px}
+  li .mono{font-size:12px}
+
+  /* ---------- TIMELINE ---------- */
+  .timeline{border-left:3px solid var(--line);margin:18px 0 0 6px;padding-left:24px}
+  .tl{position:relative;padding:0 0 22px}
+  .tl::before{content:"";position:absolute;left:-31px;top:5px;width:13px;height:13px;border-radius:50%;
+    background:var(--paper);border:3px solid var(--accent2)}
+  .tl.future::before{border-color:var(--amber);background:#fff}
+  .tl .date{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:700;
+    font-family:"Helvetica Neue",Arial,sans-serif}
+  .tl .ev{font-size:16.5px;margin-top:2px}
+
+  footer{background:#1b1813;color:#b6a883;padding:34px 0;font-size:13px}
+  footer a{color:var(--gold)}
+  .src{font-size:13px;color:var(--muted)}
+  .src code{background:#eadfca;padding:1px 5px;border-radius:3px;font-size:12px}
+</style>
+</head>
+<body>
+
+<!-- ===================== COVER ===================== -->
+<div class="cover">
+  <div class="wrap">
+    <div class="nameplate">
+      <span><a href="../index.html" style="color:inherit;text-decoration:none">← STX Skills Home</a></span>
+      <span>The STX Dispatch · Skills Audit · No. 1</span>
+      <span>June 9, 2026</span>
+    </div>
+    <p class="kicker" style="color:var(--gold)">A Relevance Audit</p>
+    <h1 class="masthead">The wave survives Fable 5:<br><span class="em">mostly intact, one cracked beam</span></h1>
+    <p class="dek">Your two flagship workflow skills — /stx-feature v1.4.0 and /stx-fix v1.3.0 — were stress-tested against the current Claude Code harness shipped with the Fable 5 model. The architecture holds. One assumption is broken. Six tentative changes are laid out below for your study — nothing has been modified.</p>
+    <div class="byline">
+      <span><b>Subject</b>&nbsp; /stx-feature · /stx-fix · 10 personas</span>
+      <span><b>Scope</b>&nbsp; Harness compatibility, read-only</span>
+      <span><b>Status</b>&nbsp; Audit complete — zero edits applied</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== VERDICT BANNER ===================== -->
+<div class="verdict">
+  <div class="big"><b>THE HEADLINE:</b>&nbsp; Both skills remain relevant and functional under Fable 5 — they are fully model-agnostic — but the in-subagent user interview in /stx-feature is broken by the current harness, and five modernization opportunities are now on the table.</div>
+</div>
+
+<!-- ===================== NARRATIVE: WHAT WAS AUDITED ===================== -->
+<section><div class="wrap">
+  <p class="kicker">The Investigation</p>
+  <h2>What we checked, and how</h2>
+  <p class="lead">Two parallel deep-reads swept every line of both skill definitions, their catalogs, templates, schemas, and all ten persona files under <span class="mono">.claude/agents/</span>. In parallel, a documentation agent verified eight specific harness facts against the current official Claude Code docs (code.claude.com, June 2026). Each mechanic in the skills was then judged against verified harness reality — never from memory.</p>
+  <p class="two-col">The single best piece of news came first: neither skill, nor any persona, names a Claude model anywhere. There are zero references to Opus, Sonnet, Haiku, or Fable, no token-limit assumptions, and no model-version behavior baked in. The skills speak only in terms of harness tools — <span class="mono">Agent</span>, <span class="mono">AskUserQuestion</span>, <span class="mono">Explore</span>, shell git — and all of those tools still exist under Fable 5 with compatible signatures. The orchestration logic itself (gates, iteration caps, halt verdicts, JSON-canonical state, idempotent HTML wikis) is pure process design and is entirely model-independent. Fable 5 being a stronger instruction-follower, if anything, makes the persona contracts <em>more</em> reliable, not less. The skills' separation-of-duties design — Coder forbidden from test files, Reviewer forbidden from editing anything, QA re-running tests independently — anticipates exactly the failure modes the new harness's own multi-agent patterns (adversarial verification, judge panels) are built around. The design has aged well. What has aged is the plumbing: the harness grew native capabilities that the skills predate, and one capability it quietly took away.</p>
+  <div class="pull">The design has aged well. What has aged is the plumbing — and one pipe the harness quietly capped: subagents can no longer ask the user anything.</div>
+</div></section>
+
+<!-- ===================== DASHBOARD ===================== -->
+<section><div class="wrap">
+  <p class="kicker">The Dashboard</p>
+  <h2>By the numbers</h2>
+  <div class="stats">
+    <div class="stat"><div class="stat-num">15</div><div class="stat-lab">mechanics audited</div></div>
+    <div class="stat"><div class="stat-num g">8</div><div class="stat-lab">work as written</div></div>
+    <div class="stat"><div class="stat-num a">4</div><div class="stat-lab">work, but legacy</div></div>
+    <div class="stat"><div class="stat-num r">3</div><div class="stat-lab">broken (interviews)</div></div>
+  </div>
+  <div class="bar-wrap">
+    <div class="bar-track">
+      <div class="seg done" style="flex:0 0 80%">80% — functional under Fable 5</div>
+      <div class="seg left" style="flex:0 0 20%">20% — broken</div>
+    </div>
+    <div class="bar-key">
+      <span><span class="dot" style="background:var(--green)"></span>Functional (incl. legacy-but-working)</span>
+      <span><span class="dot" style="background:#cbb890"></span>Broken in interactive mode</span>
+    </div>
+  </div>
+  <p style="margin-top:22px">All three broken mechanics share a single root cause — subagent-run user interviews — and all three are fully bypassed in <span class="mono">--autonomous</span> mode, which is why autonomous waves have kept working. <strong>/stx-fix is unaffected:</strong> its interview runs in the orchestrator (main loop), exactly where the current harness requires it.</p>
+</div></section>
+
+<!-- ===================== RELEVANCE MATRIX ===================== -->
+<section><div class="wrap">
+  <p class="kicker">The Ledger</p>
+  <h2>The relevance matrix, mechanic by mechanic</h2>
+  <table>
+    <thead><tr><th>#</th><th>Mechanic (evidence)</th><th>Skill</th><th>Fable 5 harness reality</th><th>Verdict</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Model-agnosticism — zero model names, token limits, or version behavior anywhere</td><td>both</td><td>Nothing to break; survives any model swap including Fable 5</td><td><span class="pill live">WORKS</span></td></tr>
+      <tr><td>2</td><td>Orchestrator-run gates &amp; interviews via <span class="mono">AskUserQuestion</span> in the main loop (stx-fix Steps 2–5; stx-feature Gates 1–3)</td><td>both</td><td><span class="mono">AskUserQuestion</span> fully supported in the main conversation</td><td><span class="pill live">WORKS</span></td></tr>
+      <tr><td>3</td><td>Analyst interviews the user from inside its subagent (<span class="mono">stx-analyst.md:29</span>, "Interview the user via AskUserQuestion, grouped 2–4 questions per call")</td><td>feature</td><td>Docs: <span class="mono">AskUserQuestion</span> is "not available to subagents, even when listed in the tools field"</td><td><span class="pill dead">BROKEN</span></td></tr>
+      <tr><td>4</td><td>Architect interviews the user for gaps from inside its subagent (<span class="mono">stx-architect.md:30</span>)</td><td>feature</td><td>Same harness restriction as #3</td><td><span class="pill dead">BROKEN</span></td></tr>
+      <tr><td>5</td><td>QA proposes Vitest scaffolding "requires user approval via AskUserQuestion" from inside its subagent (<span class="mono">stx-qa.md:37</span>)</td><td>both</td><td>Same harness restriction as #3</td><td><span class="pill dead">BROKEN</span></td></tr>
+      <tr><td>6</td><td>Spawn pattern: <span class="mono">subagent_type: general-purpose</span> + paste persona file verbatim (<span class="mono">stx-feature/SKILL.md:195,209,223,282</span>; <span class="mono">stx-fix/SKILL.md:187-190</span>)</td><td>both</td><td>Still works — but all 10 stx personas are now auto-registered as first-class agent types invocable directly via <span class="mono">subagent_type: stx-&lt;role&gt;</span></td><td><span class="pill wait">LEGACY</span></td></tr>
+      <tr><td>7</td><td>Manual worktree protocol: <span class="mono">git worktree add</span> + <span class="mono">cd</span> + branch verify (Step 0.5 / Step 1.5)</td><td>both</td><td>Still works — harness now ships native <span class="mono">EnterWorktree</span> / <span class="mono">ExitWorktree</span> with auto-cleanup</td><td><span class="pill wait">LEGACY</span></td></tr>
+      <tr><td>8</td><td>Fresh agent re-spawned every loop iteration (Dev↔Reviewer↔QA; QA↔Coder)</td><td>both</td><td>Still works — <span class="mono">SendMessage</span> can now resume a prior agent with context intact (experimental, flag-gated)</td><td><span class="pill wait">LEGACY</span></td></tr>
+      <tr><td>9</td><td>Structured YAML hand-back blocks parsed by convention (<span class="mono">tests_written[]</span>, <span class="mono">files_touched[]</span>)</td><td>both</td><td>Still the only option on the Agent tool (no schema param); the Workflow tool's <span class="mono">agent()</span> does offer validated schemas</td><td><span class="pill wait">LEGACY</span></td></tr>
+      <tr><td>10</td><td>Reviewer "forbidden from editing any file" enforced by prose only (<span class="mono">stx-reviewer.md</span>)</td><td>feature</td><td>Works, but unenforced — agent frontmatter now supports <span class="mono">disallowedTools</span> for hard enforcement</td><td><span class="pill live">WORKS</span></td></tr>
+      <tr><td>11</td><td>Iteration caps (soft 3 / hard 5), suspicious-changes ceiling, reviewer halt verdicts</td><td>both</td><td>Pure orchestration logic; model-independent</td><td><span class="pill live">WORKS</span></td></tr>
+      <tr><td>12</td><td>JSON-canonical state → rendered HTML artifacts → idempotent cross-index wikis</td><td>both</td><td>Pure file convention; unaffected by harness changes</td><td><span class="pill live">WORKS</span></td></tr>
+      <tr><td>13</td><td><span class="mono">--autonomous</span> governance: auto-approve interactive gates, never commit/push, halt verdicts still trip</td><td>both</td><td>Aligns exactly with Fable 5's autonomous-operation guidance (no mid-task user questions; report, don't commit)</td><td><span class="pill live">WORKS</span></td></tr>
+      <tr><td>14</td><td>Parallel Dev scheduling gated on non-overlapping <span class="mono">scope_paths</span>, all in one shared worktree</td><td>feature</td><td>Works; Agent tool's <span class="mono">isolation: "worktree"</span> now offers per-agent isolation as an alternative for conflicting scopes</td><td><span class="pill live">WORKS</span></td></tr>
+      <tr><td>15</td><td><span class="mono">version</span> field in SKILL.md / persona frontmatter</td><td>both</td><td>Harness ignores it (not a recognized field) — harmless; your catalog.json + <span class="mono">npm run build</span> pipeline is the real consumer</td><td><span class="pill live">WORKS</span></td></tr>
+    </tbody>
+  </table>
+  <p class="src">Sources: <code>.claude/skills/stx-feature/SKILL.md</code> · <code>.claude/skills/stx-fix/SKILL.md</code> · <code>.claude/agents/stx-*.md</code> · code.claude.com/docs/en/sub-agents.md · /en/worktrees.md · /en/workflows.md · /en/skills.md (retrieved 2026-06-09)</p>
+</div></section>
+
+<!-- ===================== THE BROKEN ASSUMPTION ===================== -->
+<section><div class="wrap">
+  <p class="kicker">The Cracked Beam</p>
+  <h2>Subagents can no longer talk to your user</h2>
+  <p class="lead">The one genuine break is precise and well-bounded. The current harness documents that <span class="mono">AskUserQuestion</span> "depends on the main conversation's UI… and is not available to subagents, even when listed in the tools field." Three places in your persona contracts instruct a <em>spawned subagent</em> to do exactly that.</p>
+  <div class="box warn">
+    <span class="tag r">What actually happens today</span>
+    <p style="font-size:16px">When an interactive (non-autonomous) <span class="mono">/stx-feature</span> wave spawns the Analyst, the persona tells it to "Interview the user (via AskUserQuestion, grouped 2–4 questions per call)" — but the tool is unavailable in that context. In practice the subagent either silently answers its own questions with assumptions (degrading Gate 1's value — the user approves requirements they were never asked about) or stalls. The same applies to the Architect's gap interview and to QA's Vitest-scaffolding approval. The <span class="mono">--autonomous</span> path explicitly suppresses these interviews, which is why autonomous runs have been behaving exactly as designed.</p>
+  </div>
+  <ul class="check">
+    <li class="o"><span class="mono">stx-analyst.md:29</span> — requirement interview must move to the orchestrator (main loop), with answers passed into the spawn prompt.</li>
+    <li class="o"><span class="mono">stx-architect.md:30</span> — gap interview, same relocation.</li>
+    <li class="o"><span class="mono">stx-qa.md:37</span> — scaffolding approval should become a "return an open question to the orchestrator and pause" contract.</li>
+    <li class="x">All three gates (Gate 1/2/3) and the /stx-fix acceptance gate already run in the main loop — these were always correct and need no change.</li>
+  </ul>
+</div></section>
+
+<!-- ===================== TENTATIVE CHANGES ===================== -->
+<section><div class="wrap">
+  <p class="kicker">The Proposal Drawer</p>
+  <h2>Six tentative changes — for study, not yet applied</h2>
+  <p>Each card below is a concrete, reviewable change specification. <strong>None of these have been made.</strong> Every card notes its ripple effects under the repo's doc-sync rule: any SKILL.md semantic change requires the matching <span class="mono">catalog.json</span> version bump and an <span class="mono">npm run build</span> regeneration in the same commit.</p>
+
+  <!-- CHANGE 1 -->
+  <div class="box warn">
+    <span class="tag r">Change 1 · Priority P1 — fixes the broken mechanic</span>
+    <h3>Relocate all user interviews to the orchestrator</h3>
+    <p style="font-size:16px"><b>Files:</b> <span class="mono">.claude/skills/stx-feature/SKILL.md</span> (Steps 2–4), <span class="mono">.claude/agents/stx-analyst.md</span>, <span class="mono">stx-architect.md</span>, <span class="mono">stx-qa.md</span></p>
+    <table>
+      <tr><td style="width:80px"><b>Before</b></td><td><span class="mono">stx-analyst.md:29 — "Interview the user (via AskUserQuestion, grouped 2–4 questions per call) on: problem, actor, acceptance criteria…"</span></td></tr>
+      <tr><td><b>After</b></td><td><span class="mono">Orchestrator (SKILL.md Step 2): "BEFORE spawning the Analyst, interview the user via AskUserQuestion (2–4 grouped questions: problem, actor, acceptance criteria, blast radius, out-of-scope). Append the transcript to the Analyst's spawn prompt."<br>Persona: "You CANNOT reach the user (subagents have no AskUserQuestion). Work from the interview transcript in your prompt. If a blocking ambiguity remains, STOP and return a structured open_questions[] block — the orchestrator will ask and re-invoke you."</span></td></tr>
+      <tr><td><b>Why</b></td><td>Harness fact: AskUserQuestion is unavailable to subagents (sub-agents.md, "Available tools"). Restores the intended human-in-the-loop quality of Gates 1–3.</td></tr>
+      <tr><td><b>Impact / Effort / Risk</b></td><td>High impact (repairs interactive mode) / Medium effort (4 files, an ask-and-respawn loop) / Low risk — autonomous path unchanged.</td></tr>
+      <tr><td><b>Ripple</b></td><td>stx-feature → 1.5.0 (minor); stx-analyst → 1.1.0, stx-architect → 1.1.0, stx-qa → 1.2.0; catalog.json + <span class="mono">npm run build</span>.</td></tr>
+    </table>
+  </div>
+
+  <!-- CHANGE 2 -->
+  <div class="box">
+    <span class="tag g">Change 2 · Priority P2</span>
+    <h3>Spawn personas by native agent type on Claude Code; keep paste-verbatim as the Cursor fallback</h3>
+    <p style="font-size:16px"><b>Files:</b> both SKILL.mds (every spawn block); optionally persona frontmatter (<span class="mono">description</span> already present)</p>
+    <table>
+      <tr><td style="width:80px"><b>Before</b></td><td><span class="mono">stx-feature/SKILL.md:195 — "Spawn: Agent with subagent_type: general-purpose … paste the contents of .claude/agents/stx-analyst.md into the agent's prompt verbatim"</span></td></tr>
+      <tr><td><b>After</b></td><td><span class="mono">"Spawn: Agent with subagent_type: stx-analyst (the persona file is its system prompt — do NOT paste it). Fallback (harness without registered stx agents, e.g. Cursor): subagent_type: general-purpose + paste verbatim."</span></td></tr>
+      <tr><td><b>Why</b></td><td>All 10 personas in <span class="mono">.claude/agents/</span> are already auto-registered as agent types in current Claude Code; double-loading the persona (system prompt + pasted copy) wastes tokens and risks divergence.</td></tr>
+      <tr><td><b>Impact / Effort / Risk</b></td><td>Medium impact (cleaner, cheaper spawns) / Low effort / Medium risk: must verify the Cursor install-time transform still produces a working fallback — the dual-path wording carries that.</td></tr>
+      <tr><td><b>Ripple</b></td><td>stx-feature → minor bump, stx-fix → minor bump; catalogs + build.</td></tr>
+    </table>
+  </div>
+
+  <!-- CHANGE 3 -->
+  <div class="box">
+    <span class="tag g">Change 3 · Priority P2</span>
+    <h3>Hard-enforce the Reviewer's read-only contract via frontmatter</h3>
+    <p style="font-size:16px"><b>Files:</b> <span class="mono">.claude/agents/stx-reviewer.md</span> (frontmatter only)</p>
+    <table>
+      <tr><td style="width:80px"><b>Before</b></td><td><span class="mono">Prose only: "Forbidden from editing any file — read-only review only."</span></td></tr>
+      <tr><td><b>After</b></td><td><span class="mono">frontmatter adds: disallowedTools: ["Edit", "Write", "NotebookEdit"]</span> (prose retained)</td></tr>
+      <tr><td><b>Why</b></td><td>Agent frontmatter now supports <span class="mono">disallowedTools</span>; turns a behavioral promise into a mechanical guarantee. Cheap insurance for the integrity gate the whole loop leans on.</td></tr>
+      <tr><td><b>Impact / Effort / Risk</b></td><td>Medium impact / Trivial effort / Near-zero risk — only effective via Change 2's native spawn (a pasted persona inside general-purpose isn't tool-restricted).</td></tr>
+      <tr><td><b>Ripple</b></td><td>stx-reviewer → 1.1.0; persona_versions snapshot in future waves picks it up automatically.</td></tr>
+    </table>
+  </div>
+
+  <!-- CHANGE 4 -->
+  <div class="box">
+    <span class="tag g">Change 4 · Priority P3</span>
+    <h3>Adopt native worktree entry in Step 0.5 / Step 1.5</h3>
+    <p style="font-size:16px"><b>Files:</b> both SKILL.mds (worktree steps)</p>
+    <table>
+      <tr><td style="width:80px"><b>Before</b></td><td><span class="mono">git worktree add .claude/worktrees/&lt;name&gt; -b bugfix/&lt;name&gt; … cd "$WT" … git rev-parse --abbrev-ref HEAD (verify ≠ main)</span></td></tr>
+      <tr><td><b>After</b></td><td><span class="mono">Hybrid: keep git worktree add -b feat/wave-&lt;slug&gt; (preserves your branch naming — native creation would name it worktree-&lt;name&gt;), then EnterWorktree with path: to switch the session in; ExitWorktree at close-out. Keep the branch-≠-main verification.</span></td></tr>
+      <tr><td><b>Why</b></td><td>Native tools switch the session cwd atomically and integrate with the harness's worktree lifecycle; the bare <span class="mono">cd</span> approach works but can trip permission prompts in compound commands.</td></tr>
+      <tr><td><b>Impact / Effort / Risk</b></td><td>Low-medium impact (robustness) / Low effort / Low risk — the hybrid keeps <span class="mono">feat/wave-*</span> and <span class="mono">bugfix/*</span> naming and the Cursor caveat unchanged.</td></tr>
+      <tr><td><b>Ripple</b></td><td>Both skills → patch/minor bump; catalogs + build.</td></tr>
+    </table>
+  </div>
+
+  <!-- CHANGE 5 -->
+  <div class="box">
+    <span class="tag g">Change 5 · Priority P4 — experimental</span>
+    <h3>Resume QA across iterations with SendMessage instead of re-spawning</h3>
+    <p style="font-size:16px"><b>Files:</b> stx-feature SKILL.md Step 6; stx-fix SKILL.md loop section</p>
+    <table>
+      <tr><td style="width:80px"><b>Before</b></td><td><span class="mono">Every iteration spawns a fresh QA agent that must re-read the test file, state JSON, and prior context from disk.</span></td></tr>
+      <tr><td><b>After</b></td><td><span class="mono">"If SendMessage is available in the session, retain the QA agent's ID from its first spawn and resume it per iteration (context intact). Otherwise fall back to fresh spawns (current behavior)."</span></td></tr>
+      <tr><td><b>Why</b></td><td>Subagent resume now exists (docs: "Resumed subagents retain their full conversation history") — saves tokens and keeps QA's memory of prior Dev attempts, sharpening repeat-offense detection.</td></tr>
+      <tr><td><b>Impact / Effort / Risk</b></td><td>Medium impact / Low effort / Medium risk: docs gate it behind <span class="mono">CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1</span> (though it worked un-flagged in this session) — hence the capability-check wording, not a hard dependency.</td></tr>
+      <tr><td><b>Ripple</b></td><td>Both skills → minor bump; catalogs + build.</td></tr>
+    </table>
+  </div>
+
+  <!-- CHANGE 6 -->
+  <div class="box">
+    <span class="tag g">Change 6 · Priority P5 — evaluate, don't rush</span>
+    <h3>Evaluate the Workflow tool as the engine for the Step 5–6 Dev wave</h3>
+    <p style="font-size:16px"><b>Files:</b> stx-feature SKILL.md Steps 5–6 (a redesign, not an edit)</p>
+    <table>
+      <tr><td style="width:80px"><b>Today</b></td><td><span class="mono">The orchestrator hand-manages eligibility, ≤3-way concurrency, the Dev→Reviewer→QA chain, and parses YAML hand-backs by convention.</span></td></tr>
+      <tr><td><b>Candidate</b></td><td><span class="mono">A Workflow script: pipeline(eligibleTasks, dev, reviewer, qa) with schema-validated agent() outputs replacing YAML parsing, phase() progress, and deterministic cap counting in plain JS. Gates and interviews stay in the main loop.</span></td></tr>
+      <tr><td><b>Why</b></td><td>The Workflow tool is purpose-built for exactly this shape (deterministic loops, fan-out, structured outputs). Opt-in is satisfied: a user invoking a skill whose instructions call for a workflow counts as explicit consent per current docs.</td></tr>
+      <tr><td><b>Impact / Effort / Risk</b></td><td>High potential impact (reliability of caps/parsing) / High effort / Higher risk: mid-loop user surfacing (halt verdicts → user) is harder from inside a background workflow; wave-state.json writes would need restructuring. Recommend a prototype wave before committing — this is backlog, not a quick win.</td></tr>
+      <tr><td><b>Ripple</b></td><td>Would be stx-feature 2.0.0 territory; full catalog + docs regeneration.</td></tr>
+    </table>
+  </div>
+</div></section>
+
+<!-- ===================== WHAT NEEDS NO CHANGE ===================== -->
+<section><div class="wrap">
+  <p class="kicker">The Keep Pile</p>
+  <h2>What should stay exactly as it is</h2>
+  <div class="box good">
+    <span class="tag g">Verified sound under Fable 5</span>
+    <ul class="check">
+      <li class="x">Model-agnostic persona contracts — no model names anywhere; nothing to migrate for Fable 5 itself.</li>
+      <li class="x"><span class="mono">--autonomous</span> governance — matches the new harness's autonomous-operation doctrine precisely (no mid-task questions, never commit/push unattended, halt verdicts still trip).</li>
+      <li class="x">Separation of duties (QA-only test edits, read-only Reviewer, smallest-change Coder) — the same adversarial-verification philosophy the new harness promotes natively.</li>
+      <li class="x">JSON-canonical state with rendered HTML and idempotent wikis — robust, harness-independent, and resume-friendly.</li>
+      <li class="x">Iteration caps, suspicious-changes ceiling, and halt-the-loop offenses — pure process logic, fully portable.</li>
+      <li class="x">The catalog.json / SKILL.md / generated-docs pipeline — the harness ignoring <span class="mono">version</span> frontmatter is harmless; your build owns it.</li>
+    </ul>
+  </div>
+</div></section>
+
+<!-- ===================== BOTTOM LINE ===================== -->
+<section style="border-bottom:none"><div class="wrap">
+  <p class="kicker">The Bottom Line</p>
+  <h2>So — are the skills still relevant?</h2>
+  <p class="lead">Yes — decisively. Twelve of fifteen audited mechanics work under Fable 5 as written, and the three that don't share one root cause with one clean fix: interviews belong in the orchestrator, because subagents can no longer reach your user. Apply Change 1 and interactive /stx-feature waves are fully restored; Changes 2–4 are cheap hardening; Changes 5–6 are genuine opportunities the new harness opened up, worth a deliberate look rather than a reflex. Nothing in this audit was modified — every card above awaits your approval, and any real edit must travel with its catalog.json bump and <span class="mono">npm run build</span> regeneration per the repo's doc-sync rule.</p>
+</div></section>
+
+<footer><div class="wrap">
+  <p><b style="color:#f0e6cd">The STX Dispatch</b> — compiled June 9, 2026 by a read-only audit session (Claude Code, Fable 5). No skill, persona, or catalog file was modified. <a href="../index.html">← Back to STX Skills home</a></p>
+  <p class="src" style="color:#9a8e72">Primary sources: <code style="background:#2a241b;color:#cdbf9c">.claude/skills/stx-feature/SKILL.md (v1.4.0)</code> <code style="background:#2a241b;color:#cdbf9c">.claude/skills/stx-fix/SKILL.md (v1.3.0)</code> <code style="background:#2a241b;color:#cdbf9c">.claude/agents/stx-{analyst,architect,qa,reviewer,coder,dev-*}.md</code> <code style="background:#2a241b;color:#cdbf9c">code.claude.com/docs/en/{sub-agents,worktrees,workflows,skills,model-config}.md (2026-06-09)</code></p>
+</div></footer>
+
+</body>
+</html>
