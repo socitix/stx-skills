@@ -1,7 +1,7 @@
 ---
 name: stx-feature
 description: Drives a multi-agent feature implementation wave. Interviews the user, runs Analyst → Architect → QA in sequence (each behind a gate), then schedules tier-specialized Dev agents under a Reviewer + QA control loop. Produces requirement-verse.html, architecture-verse.html, qa-verse.html, and result.html artifacts in docs/waves/, plus a cross-wave wave-wiki.html index. Use when a new feature (multi-task, possibly multi-tier) needs to be implemented, not a single bug fix. Supports --autonomous to auto-approve all interactive gates (still halts on destructive ops, commits, and pushes).
-version: 1.10.4
+version: 1.11.0
 author: STX
 ---
 

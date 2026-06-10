@@ -1,7 +1,7 @@
 ---
 name: stx-magazine-report
 description: Produce a magazine-style single-file HTML deliverable from any analytical source — health reports, GTM strategy, investment memos, portfolio reviews, technical audits, renovation plans. Drives an interview → analysis → render flow against the embedded reusable prompt template, lets the user pick one of four editorial style palettes (Navy Strategy Brief, Veew Teal Field Guide, Crimson Sunday Supplement, or Surprise-me), and writes a self-contained `*.html` to the working folder with a cover, chapters, pull quotes, action cards, severity meters, click-to-expand detail library, donut/bar charts, and closing prediction band.
-version: 1.10.4
+version: 1.11.0
 author: STX
 zone: any
 ---

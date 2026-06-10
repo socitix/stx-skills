@@ -1,7 +1,7 @@
 ---
 name: stx-dev-base
 description: Universal Dev agent prelude for /stx-feature waves. Every tier-specialized Dev (db / service / api / ui) loads this first, then overlays its tier-specific overrides. Encodes the QA-Dev contract, scope guardrails, story-style code guideline, and the hand-back report shape.
-version: 1.10.4
+version: 1.11.0
 author: STX
 role: dev-base
 inputs:

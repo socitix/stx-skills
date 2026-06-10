@@ -1,7 +1,7 @@
 ---
 name: stx-dev-tier-db
 description: Database-tier Dev prelude for /stx-feature waves. Overrides stx-dev-base with rules for migrations, RLS, schema, and data-protection guards. Spawned when task.tier == "db".
-version: 1.10.4
+version: 1.11.0
 author: STX
 role: dev-tier
 tier: db
