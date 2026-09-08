@@ -704,7 +704,7 @@
     background: #fff;
   }
 
-  /* ─────── Fable 5 "Coming Soon" center-stage announcement ─────── */
+  /* ─────── Fable 5.1 "Relevance" center-stage announcement ─────── */
   .fable5-feature {
     display: block;
     margin: 38px 0 46px;
@@ -734,6 +734,12 @@
     color: #e8dcc0; max-width: 780px;
   }
   .fable5-feature p strong { color: #ffd98a; }
+  .fable5-feature ul {
+    margin: 0 0 20px; padding-left: 20px; max-width: 780px;
+    color: #e8dcc0; font-size: 14.5px; line-height: 1.55;
+  }
+  .fable5-feature li { margin-bottom: 7px; }
+  .fable5-feature li strong { color: #ffd98a; }
   .f5-pill {
     display: inline-block;
     background: var(--gold); color: #1b1206;
@@ -797,7 +803,7 @@
       <div class="stat"><span class="n">2</span><span class="l">Primary skills</span></div>
       <div class="stat"><span class="n teal">2</span><span class="l">Worktree skills</span></div>
       <div class="stat"><span class="n green">6</span><span class="l">Helper skills</span></div>
-      <div class="stat"><span class="n gold">v1.11.0</span><span class="l">Current release</span></div>
+      <div class="stat"><span class="n gold">v1.11.1</span><span class="l">Current release</span></div>
 <!-- END AUTO: cover stats -->
     </div>
   </div>
@@ -820,11 +826,18 @@
       </ol>
     </nav>
 
-    <!-- ─────── Fable 5 "Coming Soon" center-stage announcement ─────── -->
-    <a class="fable5-feature" href="docs/fable5-stx-workflow-skills-audit.html">
-      <span class="f5-pill">Coming&nbsp;Soon</span>
-      <h3>The Fable 5 update — <em>the wave survives</em></h3>
-      <p>We audited <strong>/stx-feature</strong> &amp; <strong>/stx-fix</strong> against the new Claude Code harness shipped with Fable 5: fifteen mechanics verified, one cracked beam found, and six tentative changes laid out before the real work ships.</p>
+    <!-- ─────── Fable 5.1 "Relevance" center-stage announcement ─────── -->
+    <a class="fable5-feature" href="docs/stx-approach-validity-study-AUG2026.html">
+      <span class="f5-pill">Relevance&nbsp;·&nbsp;As of Fable 5.1</span>
+      <h3>Still relevant under Fable 5.1 — <em>the loop became canon</em></h3>
+      <p>We re-tested <strong>/stx-feature</strong> &amp; <strong>/stx-fix</strong> against the current Claude Code harness and the 2026 agentic-dev field. Verdict: both approaches remain valid — one of them is now first-party doctrine.</p>
+      <ul>
+        <li><strong>/stx-fix is first-party canon.</strong> Anthropic's best-practices doc now prescribes the same QA → Coder loop: failing test first, Coder locked out of test files, tampering is a hard stop.</li>
+        <li><strong>Its paranoia is measured, not hypothetical.</strong> The halt taxonomy (test edited, assertion weakened, SUT mocked) maps 1:1 onto documented reward-hacking, seen at 5–14% on hack-prone coding tasks even in aligned models.</li>
+        <li><strong>/stx-feature's spine is the 2026 mainstream.</strong> Spec → gates → verification is what Spec Kit, Kiro, and BMAD all converged on; QA-owned failing-test-first and the read-only fresh-context Reviewer are ahead of the field.</li>
+        <li><strong>Scorecard: 7 of 10 industry norms fully met, 2 partial, 1 gap.</strong> The gap is that guardrails live in prose, not hooks.</li>
+        <li><strong>What aged is choreography, not philosophy.</strong> Per-task role handoffs, fresh spawns per iteration, and per-iteration full review are the procedural scaffolding the field is deleting; six proposals sit in the drawer, none applied yet.</li>
+      </ul>
       <span class="f5-cta">Read the full study →</span>
     </a>
 
@@ -2256,7 +2269,7 @@
 
 <footer class="colophon">
   <div class="wrap">
-    <strong>STX Skills <span class="pkg-version">v1.11.0</span></strong> · Walkthrough &amp; Reference ·
+    <strong>STX Skills <span class="pkg-version">v1.11.1</span></strong> · Walkthrough &amp; Reference ·
     open with <code>/stx-help-html</code> · text-mode with <code>/stx-help</code>
   </div>
 </footer>
