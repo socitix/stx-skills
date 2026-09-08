@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fix Wiki — all /stx-fix runs</title>
+<!--
+================================================================================
+  Shared style block for /stx-feature HTML templates.
+
+  Agents inline this block into each rendered artifact. Keep it self-contained
+  so the produced HTML works offline and renders consistently across waves.
+================================================================================
+-->
+<style>
+  :root {
+    --bg: #fafaf9;
+    --panel: #ffffff;
+    --text: #111827;
+    --muted: #6b7280;
+    --hairline: #e5e7eb;
+    --hairline-strong: #d1d5db;
+    --teal: #14b8a6;
+    --teal-dark: #0f766e;
+    --amber: #d97706;
+    --amber-soft: #fef3c7;
+    --red: #b91c1c;
+    --red-bg: #fee2e2;
+    --green: #047857;
+    --green-bg: #dcfce7;
+    --code-bg: #0f172a;
+    --code-text: #e2e8f0;
+    --tier-db: #7c3aed;
+    --tier-service: #0891b2;
+    --tier-api: #d97706;
+    --tier-ui: #db2777;
+  }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    line-height: 1.55;
+    font-size: 15px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 56px 28px 96px; }
+  header { border-bottom: 1px solid var(--hairline); padding-bottom: 28px; margin-bottom: 36px; }
+  header .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  header h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 500;
+    font-size: 38px;
+    line-height: 1.15;
+    margin: 8px 0 12px;
+    letter-spacing: -0.01em;
+  }
+  header .meta { color: var(--muted); font-size: 14px; }
+  header .meta code, .badge code {
+    background: #fff;
+    padding: 2px 6px;
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  h2 {
+    font-family: Georgia, serif;
+    font-weight: 500;
+    font-size: 24px;
+    margin: 48px 0 14px;
+  }
+  h2 .num {
+    color: var(--teal);
+    margin-right: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  h3 { font-size: 16px; margin: 24px 0 8px; font-weight: 600; }
+  p { margin: 0 0 14px; }
+  a { color: var(--teal-dark); }
+  code, pre, kbd { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  code { background: #fff; border: 1px solid var(--hairline); border-radius: 4px; padding: 1px 5px; font-size: 13px; }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 14px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  ul, ol { padding-left: 22px; margin: 0 0 14px; }
+  li { margin-bottom: 6px; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin-bottom: 18px;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .card-title {
+    font-family: Georgia, serif;
+    font-size: 19px;
+    font-weight: 500;
+    margin: 0;
+  }
+  .card-id {
+    color: var(--muted);
+    font-family: ui-monospace, monospace;
+    font-size: 12.5px;
+  }
+
+  .tier {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #fff;
+  }
+  .tier-db { background: var(--tier-db); }
+  .tier-service { background: var(--tier-service); }
+  .tier-api { background: var(--tier-api); }
+  .tier-ui { background: var(--tier-ui); }
+
+  .status {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+  .status-todo { background: var(--hairline); color: var(--text); }
+  .status-in-progress { background: var(--amber-soft); color: var(--amber); }
+  .status-done { background: var(--green-bg); color: var(--green); }
+  .status-halted { background: var(--red-bg); color: var(--red); }
+  /* wave-level statuses (result.html STATUS and wave-wiki.html rows) */
+  .status-planning,
+  .status-gate-1,
+  .status-gate-2,
+  .status-gate-3,
+  .status-dev-wave { background: var(--amber-soft); color: var(--amber); }
+  .status-halted-at-cap,
+  .status-blocked { background: var(--red-bg); color: var(--red); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+  th, td {
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--hairline);
+    vertical-align: top;
+  }
+  th {
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 11.5px;
+  }
+  tr:last-child td { border-bottom: none; }
+
+  .meta-row {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .meta-row span strong { color: var(--text); font-weight: 600; }
+
+  .note {
+    background: var(--amber-soft);
+    border-left: 3px solid var(--amber);
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+  .danger {
+    background: var(--red-bg);
+    border-left: 3px solid var(--red);
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+  .scope-paths { font-family: ui-monospace, monospace; font-size: 12.5px; color: var(--muted); }
+  .scope-paths li { color: var(--text); }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Cross-fix index · rebuilt on every fix close-out</div>
+    <h1>Fix Wiki</h1>
+    <div class="meta">
+      <code>1</code> fixes · <code>1</code> done · <code>0</code> halted/blocked · <code>0</code> cancelled<br>
+      regenerated <code>2026-09-07T14:46:59Z</code> from <code>docs/waves/fix-*/fix-state.json</code>
+    </div>
+  </header>
+
+  <h2><span class="num">§1</span> All fixes</h2>
+  <p>Every <code>/stx-fix</code> run that has a directory under <code>docs/waves/</code>, newest first (sorted by <code>started_at</code> DESC). This table is regenerated from each fix's canonical <code>fix-state.json</code> — it is never edited by hand. Sibling <code>wave-*/</code> folders authored by <code>/stx-feature</code> are intentionally excluded; see <code>wave-wiki.html</code> for those.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Fix</th>
+        <th style="width:140px">Status</th>
+        <th>Title</th>
+        <th style="width:90px">Iters</th>
+        <th style="width:150px">Started</th>
+        <th style="width:150px">Finished</th>
+        <th style="width:70px">Open</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+      <tr>
+        <td>
+          <strong>relevance-section</strong><br>
+          <span class="card-id">fix-relevance-section</span>
+        </td>
+        <td>
+          <span class="status status-done">done</span>
+          <!--
+            Status pill classes (all four must be referenced so the renderer
+            and any visual-regression test can map to them):
+              status-done           · loop terminated green
+              status-halted-at-cap  · iteration cap tripped before green
+              status-blocked        · hard-rule violation halted the loop
+              status-cancelled      · user cancelled before/during the loop
+          -->
+        </td>
+        <td style="font-size:13.5px">Replace the stale "Coming Soon" card with "Relevance · As of Fable 5.1"</td>
+        <td style="font-variant-numeric:tabular-nums">1/5</td>
+        <td style="font-size:12.5px;color:var(--muted)">2026-09-07T14:41:19Z</td>
+        <td style="font-size:12.5px;color:var(--muted)">2026-09-07T14:46:59Z</td>
+        <td><a href="./fix-relevance-section/fix-report.html">open ↗</a></td>
+      </tr>
+      
+    </tbody>
+  </table>
+</div>
+</body>
+</html>
