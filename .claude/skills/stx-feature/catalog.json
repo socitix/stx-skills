@@ -2,7 +2,7 @@
   "$schema": "../catalog.schema.json",
   "name": "stx-feature",
   "slash": "/stx-feature",
-  "version": "1.11.0",
+  "version": "1.11.1",
   "zone": "main",
   "icon": "F",
   "terminal": {
