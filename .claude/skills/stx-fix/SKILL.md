@@ -1,6 +1,6 @@
 ---
 name: stx-fix
-description: Drives a two-agent QA → Coder loop against a known bug (or small cluster of related bugs). Interviews the user to fill the prompt template, confirms the worktree state, presents the rendered prompt for explicit user acceptance, then kicks off the loop. Use when the user has a reproducible bug and wants a failing test written first, then the smallest code change that makes it pass. Supports --autonomous to auto-approve the acceptance gate and optional-field interview (still halts on destructive ops, commits, and pushes). Writes a per-fix folder under docs/waves/fix-{slug}/ containing fix-report.html and fix-state.json, plus a top-level docs/waves/fix-wiki.html index across all fixes.
+description: Drives a two-agent QA → Coder loop against a known bug (or small cluster of related bugs). Interviews the user to fill the prompt template, confirms the worktree state, presents the rendered prompt for explicit user acceptance, then kicks off the loop. Use when the user has a reproducible bug and wants a failing test written first, then the smallest code change that makes it pass. Supports --autonomous to auto-approve the acceptance gate and optional-field interview (still halts on destructive ops, commits, and pushes), and --no-test for a quick fix with no test authored (lint + build + repro only; no Playwright). Writes a per-fix folder under docs/waves/fix-{slug}/ containing fix-report.html and fix-state.json, plus a top-level docs/waves/fix-wiki.html index across all fixes.
 version: 1.11.1
 author: STX
 ---
@@ -13,6 +13,8 @@ This skill spawns two agents. Their contracts live in `.claude/agents/`:
 |---|---|
 | `.claude/agents/stx-qa.md` | QA (test owner) — shared with `/stx-feature` |
 | `.claude/agents/stx-coder.md` | Coder (single-bug implementer) |
+
+Under `--no-test` (quick-fix mode) only the Coder is spawned — QA is not, because no test is authored.
 
 `template.md` references these persona files in §5 of the rendered prompt. See [`AGENTS.md`](../../../AGENTS.md) at the repo root for the full inventory.
 
@@ -63,6 +65,43 @@ When the user invokes `/stx-fix --autonomous`, the orchestrator treats every **n
 **What `--autonomous` fails on (cannot fabricate):**
 
 The four **required** FORM_FIELDS (`title`, `issues`, `repro`, `expected`) cannot be defaulted — they encode the bug. If any are missing after parsing the invocation, the skill halts with: *"`--autonomous` requires title / issues / repro / expected. Re-invoke `/stx-fix --autonomous` with these fields supplied (a YAML file via `--from <path>`, or a fully-formed natural-language description with a title line, numbered issues, repro steps, and expected behavior)."* It does NOT silently start a Coder with no acceptance criteria.
+
+### Quick-fix mode (`--no-test`)
+
+`/stx-fix --no-test` trades the regression test for speed. Use it for a small, obvious,
+low-risk fix where authoring a failing test (especially a Playwright run) costs more than
+the bug is worth. It does **not** loosen any governance rule.
+
+**What changes:**
+
+- **No QA agent, no test.** The test-authoring phase is skipped entirely; `tests_written`
+  stays empty. Nothing Playwright-related runs, and no browser MCP session is opened.
+- **Forced field values.** `test_kind` is forced to `none` and `use_browser_mcp` to `false`,
+  overriding any value from the interview or a `--from` YAML. Print one line saying so.
+- **Verification becomes lint + build + repro.** The orchestrator spawns the Coder directly,
+  then verifies with `npm run lint`, `npm run build`, and a re-read of the §2 repro against
+  the Coder's hand-back report. The orchestrator — not the Coder — decides green.
+- **Iteration caps are unchanged** (soft 3 on the same symptom, hard `iteration_cap`).
+
+**What `--no-test` NEVER bypasses:**
+
+- The Coder still may not edit, delete, skip, or weaken **any** test file. With no new test
+  to author, this rule exists so the Coder cannot reach green by disabling an existing test.
+  Touching one is still an immediate halt.
+- The §4 out-of-scope list, the worktree requirement, commit/push/PR approval, and every
+  destructive-operation halt.
+- The Step 7 close-out: `docs/waves/fix-{slug}/` (report + state) and the `fix-wiki.html`
+  rebuild still run.
+
+**The trade-off, stated out loud.** The existing suite is not run either — lint and build
+only; that is the time being saved. The fix therefore ships with **no regression test**, so
+nothing will catch this bug if it returns. The orchestrator MUST surface that caveat twice:
+once at the Step 4/5 acceptance gate, and once in the Step 7 report. If the bug touches
+money, auth, data deletion, or a documented past regression, say so and recommend dropping
+`--no-test` — then honor the user's decision either way.
+
+**Composes with `--autonomous`.** `/stx-fix --autonomous --no-test` skips both the interview
+and the acceptance gate; the caveat is still printed for the audit log.
 
 ## Workflow steps
 
@@ -139,6 +178,8 @@ Interview etiquette:
 - **Re-state the user's input** in your own words after the interview, before rendering — this catches misunderstandings cheaply.
 - **Never invent values** for required fields. If the user is vague, ask a clarifying follow-up.
 
+**`--no-test`:** skip the `test_kind` and `use_browser_mcp` questions — they are forced to `none` / `false`. Ask the remaining fields as usual. Required fields are still required: a quick fix with no acceptance criteria is not a fix.
+
 **`--autonomous`:** skip the interview entirely. Required fields (`title`, `issues`, `repro`, `expected`) must be supplied at invocation; if any are missing, halt per the **Autonomous mode** rule above. Optional fields default per FORM_FIELDS, except `commit_policy` which is forced to `no-commit`. Do not re-state the input or ask for confirmation — proceed directly to Step 3.
 
 ### Step 3 — Render the template
@@ -190,6 +231,12 @@ Sub-agent assignment guidance:
 Both persona files contain the full contract, hard rules, and reporting format. The orchestrator does NOT re-implement persona logic here. If a persona file cannot be read at spawn time, halt — do not fall back to inline prompts.
 
 Loop control is the orchestrator's job. The sub-agents do not decide when the loop ends.
+
+**`--no-test` loop shape.** Spawn no QA agent. The loop is orchestrator → Coder →
+`npm run lint` + `npm run build` → orchestrator verdict against the §2 repro and §3 expected
+behavior. The orchestrator reads the Coder's hand-back report and the diff itself; a Coder
+claiming success is not evidence. If the change cannot be judged without running the app,
+say so and recommend re-running without `--no-test` rather than guessing.
 
 **Structured hand-back collection (feeds Step 7 artifacts).** The orchestrator MUST collect two structured arrays from the agents during the loop so the artifact writer in Step 7 has the data it needs:
 
@@ -249,7 +296,7 @@ The skill stops and surfaces — never silently continues — when:
 - Worktree state cannot be confirmed (git not initialized, detached HEAD, etc.).
 - The user declines the acceptance gate at step 5.
 - The QA agent reports a test cannot be written for an issue (with a stated reason).
-- The Coder agent edits a test file (immediate halt — escalate).
+- The Coder agent edits a test file (immediate halt — escalate). Under `--no-test` this includes any **existing** test file — there is no new test to edit, and disabling an old one is not a fix.
 - The Coder agent loosens or skips an assertion (immediate halt — escalate).
 - An iteration cap trips.
 - `npm run lint` or `npm run build` fails for a reason unrelated to the bug.
@@ -262,11 +309,15 @@ The skill stops and surfaces — never silently continues — when:
 /stx-fix <bug title>                        # Pre-supply the title; everything else is interactive
 /stx-fix --autonomous --from <path.yaml>    # Autonomous; required fields read from YAML, optional fields defaulted, commit_policy forced to no-commit
 /stx-fix --autonomous "<full description>"  # Autonomous from a single natural-language paragraph — only valid when the description contains a title line + numbered issues + repro + expected; otherwise halts
+/stx-fix --no-test <bug title>              # Quick fix: no test authored, no Playwright; verified by lint + build + repro
+/stx-fix --autonomous --no-test --from <path.yaml>   # Both: no interview, no acceptance gate, no test
 ```
 
 This skill does not have a CLI binary — it is purely conversational and runs inside the assistant.
 
 In `--autonomous` mode the orchestrator never calls `AskUserQuestion`. Missing required fields halt with a one-line error; missing optional fields default per `template.md`'s FORM_FIELDS, with `commit_policy` overridden to `no-commit`. See **Autonomous mode** under Governance for the full list of what is and isn't bypassed.
+
+`--no-test` forces `test_kind: none` and `use_browser_mcp: false`, skips the QA agent, and verifies with lint + build + repro instead of a failing test. It bypasses no halt condition — see **Quick-fix mode** under Governance, including the no-regression-test caveat the orchestrator must surface.
 
 ## Requirements
 

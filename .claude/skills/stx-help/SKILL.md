@@ -43,7 +43,7 @@ MAIN-BOUND       run on main, before any worktree exists
   /stx-feature          Multi-agent wave (Analyst → Architect → QA → Dev ↔ Reviewer)
                         Add --autonomous to auto-approve gates (never commits)
   /stx-fix              Two-agent QA → Coder loop for a known bug
-                        Add --autonomous to skip the acceptance gate (never commits)
+                        --autonomous skips the acceptance gate; --no-test skips the test (lint+build only)
 
 WORKTREE-BOUND   run inside a feature worktree
   /stx-pr-merge         Commit → version bump → PR → build → squash-merge → tag → cleanup

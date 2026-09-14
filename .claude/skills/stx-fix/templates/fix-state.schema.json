@@ -70,8 +70,8 @@
       "description": "Rendered from template field {{out_of_scope}}. Hard guardrails declared up-front. Mirrors §4 of the rendered prompt. Optional in fix-state because the form field is optional."
     },
     "test_kind": {
-      "description": "Rendered from template field {{test_kind}}. Drives QA's authoring contract: playwright = browser-driven E2E; vitest-unit = unit/contract test; both = both kinds.",
-      "enum": ["playwright", "vitest-unit", "both"]
+      "description": "Rendered from template field {{test_kind}}. Drives QA's authoring contract: playwright = browser-driven E2E; vitest-unit = unit/contract test; both = both kinds; none = quick-fix mode (/stx-fix --no-test) — no QA agent, no test authored, tests_written stays empty, and verification was lint + build + repro.",
+      "enum": ["playwright", "vitest-unit", "both", "none"]
     },
     "iteration_cap": {
       "type": "integer",
