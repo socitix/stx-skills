@@ -30,6 +30,10 @@
     {{WORKTREE_PATH}}            absolute worktree path
     {{BRANCH}}                   git branch
     {{USE_BROWSER_MCP}}          true | false (rendered as text)
+    {{TEST_KIND}}                playwright | vitest-unit | both | none
+                                 none = quick-fix mode (/stx-fix --no-test): tests_written is
+                                 empty, so replace the §2 table with the quick-fix callout
+                                 marked below and keep the no-regression-test caveat visible.
     {{HALT_REASON}}              one-paragraph explanation when status != "done"; empty when done
     {{HANDOFF_DOC}}              repo-relative path to docs/tasks/<slug>-handoff.md, or "—"
     {{REPRO}}                    markdown reproduction steps (mirrors §2 of prompt)
@@ -129,6 +133,15 @@
   </table>
 
   <h2><span class="num">§2</span> Tests written</h2>
+  <!-- QUICK-FIX MODE: when {{TEST_KIND}} is "none", delete the <p> + <table> below and emit
+       this callout in their place, verbatim apart from the verification sentence:
+  <p style="border-left:3px solid var(--red);padding-left:12px">
+    <strong>No test was written.</strong> This fix ran in quick-fix mode
+    (<code>/stx-fix --no-test</code>): no QA agent was spawned and no regression test exists,
+    so nothing will catch this bug if it returns. Verification was
+    <code>npm run lint</code> + <code>npm run build</code> + a manual read of the §5 repro.
+  </p>
+  -->
   <p>Failing tests authored by QA at the start of the loop (one entry per file; a single file may cover multiple numbered issues).</p>
   <table>
     <thead>

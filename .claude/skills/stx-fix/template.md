@@ -21,7 +21,8 @@
   2. Render a form (or interview the user via AskUserQuestion). Apply
      defaults. Hide fields whose `show_if` evaluates false.
   3. On submit, substitute every {{FIELD_NAME}} with the user's value, and
-     resolve every {{#if FIELD == "value"}} ... {{/if}} block.
+     resolve every {{#if FIELD == "value"}} ... {{else}} ... {{/if}} block
+     (the {{else}} branch is optional; keep exactly one branch per block).
   4. Strip this comment block AND the FORM_FIELDS YAML block before
      presenting the rendered prompt to the user for review.
 ================================================================================
@@ -91,15 +92,15 @@ FORM_FIELDS:
   - name: test_kind
     type: radio
     label: Test kind
-    options: [playwright, vitest-unit, both]
+    options: [playwright, vitest-unit, both, none]
     default: playwright
-    help: playwright = browser-driven E2E. vitest-unit = unit/contract test against the affected service or hook. both = unit test for the service + Playwright for the UI surface.
+    help: playwright = browser-driven E2E. vitest-unit = unit/contract test against the affected service or hook. both = unit test for the service + Playwright for the UI surface. none = quick-fix mode (set only by --no-test) — no test is authored, no QA agent is spawned, and verification is lint + build + repro.
 
   - name: use_browser_mcp
     type: checkbox
     label: Allow Coder to verify visually with Chrome Dev / Playwright MCP?
     default: true
-    help: On for UI-visible bugs (visual states, modals, copy). Off for backend-only or pure-logic fixes — avoids the agent screen-poking instead of fixing.
+    help: On for UI-visible bugs (visual states, modals, copy). Off for backend-only or pure-logic fixes — avoids the agent screen-poking instead of fixing. Forced to false when test_kind == none (--no-test).
 
   - name: iteration_cap
     type: number
@@ -113,6 +114,12 @@ FORM_FIELDS:
     options: [no-commit, commit-after-green, commit-and-pr]
     default: commit-after-green
     help: no-commit = leave changes uncommitted. commit-after-green = commit once all tests pass; user opens PR. commit-and-pr = commit + push + open PR after green (still requires user-issued instruction; this just declares intent up front).
+
+  - name: no_test
+    type: checkbox
+    label: Quick-fix mode (no test authored)
+    default: false
+    help: Set automatically by /stx-fix when invoked with --no-test. When true, test_kind is forced to none and use_browser_mcp to false; the QA agent is not spawned and the fix ships with no regression test. Governance, out-of-scope guardrails, iteration caps, and the no-test-file-edits rule are unchanged.
 
   - name: autonomous
     type: checkbox
@@ -129,6 +136,10 @@ FORM_FIELDS:
 
 {{#if autonomous == true}}
 > **Autonomous mode.** This loop was started with `/stx-fix --autonomous`. The acceptance gate was auto-approved; no user interaction is expected between QA writing the failing test(s) and the loop reaching green or a halt condition. Destructive operations, test-file edits, weakened assertions, mocked SUT, out-of-scope edits, iteration caps, and commit/push/PR steps still STOP the loop and surface to the user — those are not bypassed. `commit_policy` is forced to `no-commit`; §8 below will not run a commit even if all tests pass.
+{{/if}}
+
+{{#if no_test == true}}
+> **Quick-fix mode.** This loop was started with `/stx-fix --no-test`. **No test is authored and no QA agent is spawned** — `test_kind` is `none` and `use_browser_mcp` is `false`, so nothing Playwright-related runs. Verification is `npm run lint` + `npm run build` + the §2 repro, judged by the orchestrator against §3. **This fix ships with no regression test: nothing will catch this bug if it comes back.** Everything else holds — the Coder may not edit, skip, or weaken *any* test file (including existing ones), the §4 out-of-scope list stands, iteration caps stand, and commits/pushes/PRs still require explicit approval.
 {{/if}}
 
 {{#if worktree_action == "create-new"}}
@@ -181,6 +192,10 @@ The full contracts for both agents live in versioned persona files. **Load them 
 
 ### Agent A — QA (test owner)
 
+{{#if no_test == true}}
+**Not spawned in this run.** `--no-test` skips test authoring entirely, so there is no QA agent and no failing test. Skip to Agent B. The orchestrator takes over QA's judging role: it reads the Coder's diff and hand-back report, runs `npm run lint` and `npm run build`, and checks each numbered issue in §1 against the expected behavior in §3. A Coder's claim of success is not evidence.
+{{/if}}
+
 **Persona file:** `.claude/agents/stx-qa.md` (shared with `/stx-feature`).
 
 **At spawn time:** paste the entire contents of `.claude/agents/stx-qa.md` into the QA agent's prompt verbatim, then append the following task-specific context:
@@ -196,6 +211,12 @@ If `.claude/agents/stx-qa.md` cannot be read, **halt the loop** — do not fall 
 **At spawn time:** paste the entire contents of `.claude/agents/stx-coder.md` into the Coder agent's prompt verbatim, then append:
 
 > **Failing test(s):** `<paths handed off by QA>`. **Suspected files (§4 scope hints):** `{{scope_hints}}`. **Out-of-scope (§4):** `{{out_of_scope}}`. Implement the smallest change that turns the failing test(s) green.
+
+{{#if no_test == true}}
+Under `--no-test` there is no failing test, so append this instead:
+
+> **No failing test exists for this run** (`--no-test`). Your acceptance criteria are the numbered issues in §1 and the expected behavior in §3 — read both before editing. Implement the smallest change that satisfies them, then run `npm run lint` and `npm run build`. Do **not** author a test, and do **not** edit, skip, or weaken any existing test file — that is still an immediate halt. Report what you changed and how you convinced yourself each numbered issue is fixed.
+{{/if}}
 
 {{#if use_browser_mcp == true}}
 Additionally, for UI-visible changes, append:
@@ -214,6 +235,17 @@ Both files ship with the stx-skills package and are copied into the consuming pr
 
 ## 6. The loop
 
+{{#if no_test == true}}
+```
+Coder implements minimal fix
+   ↓
+Coder runs lint + build
+   ↓
+Orchestrator judges the diff + hand-back against §1 / §3 / §2 repro
+   ├─ satisfied → §7 (done criteria)
+   └─ not satisfied → back to Coder with the specific gap
+```
+{{else}}
 ```
 QA writes failing test(s)
    ↓
@@ -227,6 +259,7 @@ QA reruns tests independently
    ├─ all green → §7 (done criteria)
    └─ any red → back to Coder with the specific failure
 ```
+{{/if}}
 
 **Iteration caps:**
 - **Soft cap — 3 cycles on the same surface bug:** if the same symptom recurs across 3 Coder attempts, the loop is converging on the wrong abstraction. **Halt and escalate to the user** with the failure package below.
@@ -246,8 +279,14 @@ When a cap trips, the orchestrator does NOT keep trying. Instead:
 
 All of these must be true before the loop ends:
 
+{{#if no_test == true}}
+- [ ] Every issue in §1 is addressed by the diff, judged against the expected behavior in §3.
+- [ ] The orchestrator (not the Coder) read the diff and confirmed the §2 repro path is covered.
+- [ ] The report records that this fix has **no regression test** (`--no-test`).
+{{else}}
 - [ ] Every issue in §1 has at least one test in QA's file that asserts the expected behavior in §3.
 - [ ] QA confirms tests are green on a fresh independent run (not just Coder's run).
+{{/if}}
 - [ ] `npm run lint` is clean.
 - [ ] `npm run build` succeeds.
 - [ ] No test was deleted, skipped, or had its assertions weakened during the loop.

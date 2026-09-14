@@ -9,16 +9,17 @@
     "group": "MAIN-BOUND",
     "lines": [
       "Two-agent QA → Coder loop for a known bug",
-      "Add --autonomous to skip the acceptance gate (never commits)"
+      "--autonomous skips the acceptance gate; --no-test skips the test (lint+build only)"
     ]
   },
   "card": {
     "summary": "Two-agent QA → Coder loop for a known bug. Failing test first, smallest change to make it pass. Writes a per-fix folder under <code>docs/waves/fix-{slug}/</code>. Personas live in <code>.claude/agents/</code>.",
-    "paragraph": "QA → Coder loop against one reproducible bug. Interview → render prompt → user acceptance → loop. The Coder cannot edit test files; touching them halts the loop. On close-out, writes a per-fix folder under <code>docs/waves/fix-{slug}/</code> containing <code>fix-report.html</code> (human-readable summary) and <code>fix-state.json</code> (machine-readable record), plus refreshes the cross-fix index at <code>docs/waves/fix-wiki.html</code>.",
+    "paragraph": "QA → Coder loop against one reproducible bug. Interview → render prompt → user acceptance → loop. The Coder cannot edit test files; touching them halts the loop. On close-out, writes a per-fix folder under <code>docs/waves/fix-{slug}/</code> containing <code>fix-report.html</code> (human-readable summary) and <code>fix-state.json</code> (machine-readable record), plus refreshes the cross-fix index at <code>docs/waves/fix-wiki.html</code>. <code>--no-test</code> runs quick-fix mode: no QA agent, no test authored, no Playwright — the Coder's change is verified by <code>npm run lint</code> + <code>npm run build</code> + the repro, and the report records that the fix ships with no regression test.",
     "use_when": [
       "Reproducible bug with concrete URL/state/steps",
       "You want failing test first, then minimal fix",
-      "Fix fits one worktree"
+      "Fix fits one worktree",
+      "Small obvious fix where a test costs more than the bug → <code>--no-test</code>"
     ],
     "dontuse_when": [
       "Multiple acceptance criteria → <code>/stx-feature</code>",
@@ -28,7 +29,9 @@
     "invocations": [
       { "comment": "Interactive", "cmd": "/stx-fix" },
       { "comment": "Pre-supply title", "cmd": "/stx-fix Timer offset wrong after DST" },
-      { "comment": "Autonomous — skip acceptance gate; forces no-commit", "cmd": "/stx-fix <o>--autonomous</o> <o>--from</o> bug.yaml" }
+      { "comment": "Autonomous — skip acceptance gate; forces no-commit", "cmd": "/stx-fix <o>--autonomous</o> <o>--from</o> bug.yaml" },
+      { "comment": "Quick fix — no test, no Playwright; lint + build + repro", "cmd": "/stx-fix <o>--no-test</o> Timer offset wrong after DST" },
+      { "comment": "Both — no interview, no acceptance gate, no test", "cmd": "/stx-fix <o>--autonomous</o> <o>--no-test</o> <o>--from</o> bug.yaml" }
     ],
     "extras": [
       {
@@ -40,7 +43,7 @@
           ["issues", "numbered list", "—"],
           ["repro", "text", "—"],
           ["expected", "numbered list", "mirrors issues 1:1"],
-          ["test_kind", "radio", "playwright (UI) / vitest-unit (logic)"],
+          ["test_kind", "radio", "playwright (UI) / vitest-unit (logic) / none (--no-test)"],
           ["iteration_cap", "number", "5"],
           ["commit_policy", "radio", "commit-after-green"]
         ]
@@ -59,10 +62,11 @@
         "title": "Halt conditions",
         "items": [
           "Coder edits a test file",
+          "Coder edits an <em>existing</em> test file under <code>--no-test</code> — disabling a test is not a fix",
           "Coder weakens or skips an assertion",
           "Iteration cap trips (default 5)",
           "Lint/build fails for an unrelated reason",
-          "<code>--autonomous</code> does not bypass any halt condition above — it only skips the acceptance gate and forces no-commit."
+          "Neither <code>--autonomous</code> nor <code>--no-test</code> bypasses any halt condition above — <code>--autonomous</code> only skips the acceptance gate and forces no-commit; <code>--no-test</code> only skips test authoring."
         ]
       }
     ]

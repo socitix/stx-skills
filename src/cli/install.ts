@@ -263,6 +263,36 @@ function installAgents(
   return { count: personaFiles.length, action: anyExisted ? 'updated' : 'added' };
 }
 
+/**
+ * Compiled skill scripts live at dist/skills/<name>.js and require shared modules
+ * as `../lib/<mod>` — a path that only resolves inside dist/. An installed skill dir
+ * has no sibling lib/, so the script would die at startup with MODULE_NOT_FOUND.
+ * Vendor each required module into <skill-dir>/lib/ and rewrite the require prefix
+ * so the installed skill dir is self-contained.
+ */
+function vendorSharedLibs(name: string, scriptPath: string): void {
+  const source = fs.readFileSync(scriptPath, 'utf8');
+  const modules = new Set(
+    [...source.matchAll(/require\("\.\.\/lib\/([A-Za-z0-9_.-]+)"\)/g)].map(m => m[1]),
+  );
+  if (modules.size === 0) return;
+
+  const libDest = path.join(path.dirname(scriptPath), 'lib');
+  for (const mod of modules) {
+    const libSrc = path.join(PACKAGE_ROOT, 'dist', 'lib', `${mod}.js`);
+    if (!fs.existsSync(libSrc)) {
+      console.log(c.warn(`  ⚠ ${name}: dist/lib/${mod}.js missing — ${name}.js will fail at startup`));
+      continue;
+    }
+    copyFileSyncSafe(libSrc, path.join(libDest, `${mod}.js`));
+    if (fs.existsSync(`${libSrc}.map`)) {
+      copyFileSyncSafe(`${libSrc}.map`, path.join(libDest, `${mod}.js.map`));
+    }
+  }
+
+  writeTextFile(scriptPath, source.replace(/require\("\.\.\/lib\//g, 'require("./lib/'));
+}
+
 function installSkill(
   name: string,
   target: string,
@@ -286,6 +316,9 @@ function installSkill(
     }
     fs.mkdirSync(path.dirname(destDir), { recursive: true });
     fs.symlinkSync(srcDir, destDir, 'dir');
+    if (fs.existsSync(path.join(PACKAGE_ROOT, 'dist', 'skills', `${name}.js`))) {
+      console.log(c.warn(`  ⚠ ${name}: --link points at the source dir, which has no ${name}.js — invoke it as \`npx ${name}\` (or from dist/skills/) in dev mode`));
+    }
     console.log(c.success(`  ✓ ${prefix}/skills/${name}  ${c.dim('(symlinked)')}`));
     return { action: 'linked' };
   }
@@ -302,8 +335,10 @@ function installSkill(
 
   const jsSrc = path.join(PACKAGE_ROOT, 'dist', 'skills', `${name}.js`);
   if (fs.existsSync(jsSrc)) {
-    copyFileSyncSafe(jsSrc, path.join(destDir, `${name}.js`));
-    fs.chmodSync(path.join(destDir, `${name}.js`), 0o755);
+    const jsDest = path.join(destDir, `${name}.js`);
+    copyFileSyncSafe(jsSrc, jsDest);
+    vendorSharedLibs(name, jsDest);
+    fs.chmodSync(jsDest, 0o755);
   }
   const mapSrc = path.join(PACKAGE_ROOT, 'dist', 'skills', `${name}.js.map`);
   if (fs.existsSync(mapSrc)) {
