@@ -103,15 +103,38 @@ Per-wave artifacts live under `docs/waves/wave-{slug}-{xxx}/`; one cross-wave in
 
 | File | Scope | Owner | Purpose |
 |---|---|---|---|
-| `wave-state.json` | per wave | Skill orchestrator | Source of truth: features, tasks, statuses, iteration counters, `suspicious[]`, `escalations[]`, `persona_versions` |
-| `requirement-verse.html` | per wave | Analyst | Rendered Features list with acceptance criteria |
-| `architecture-verse.html` | per wave | Architect | Rendered Tasks per Feature with tier + scope_paths + revisions on escalation |
-| `qa-verse.html` | per wave | QA Agent | Rendered list of failing tests, mapped task → test file |
-| `result.html` | per wave | Skill orchestrator | End-of-wave summary including suspicious changes |
+| `wave-state.json` | per wave | Agents (Analyst / Architect / QA) + orchestrator | Source of truth and the **only file agents write**: features, tasks, statuses, iteration counters, `suspicious[]`, `escalations[]`, `persona_versions` |
+| `codebase-map.md` | per wave | `stx-feature map` | Index of the consuming codebase — components, routes, services, tests, doc headings. Built once at Step 1.6, read by every agent |
+| `briefs/*.json` | per wave | `stx-feature brief` | Per-role slices of `wave-state.json` handed to each agent at spawn |
+| `requirement-verse.html` | per wave | **Rendered** from state | Features list with acceptance criteria |
+| `architecture-verse.html` | per wave | **Rendered** from state | Tasks per Feature with tier + scope_paths; §3 Revisions derived from `escalations[]` |
+| `qa-verse.html` | per wave | **Rendered** from state | Failing tests mapped task → test file, plus tasks needing manual verification |
+| `result.html` | per wave | **Rendered** from state | End-of-wave summary: gates, per-task status, reviewer verdicts, suspicious changes |
 | `handoff.md` | per wave | Skill orchestrator | Only written when an iteration cap trips or the wave is halted |
 | `wave-wiki.html` | **all waves** | Skill orchestrator | Cross-wave index at `docs/waves/wave-wiki.html` (one level above the wave dirs). Rebuilt on every `result.html` write by scanning every `docs/waves/wave-*/wave-state.json`. `fix-*/` folders are excluded and are aggregated separately in `docs/waves/fix-wiki.html` by `/stx-fix`. Lists all waves with status, started/finished, description, features done/total, and a link into each wave. |
 
-HTML is rendered from `wave-state.json` after every state change — JSON is canonical, HTML is presentation. The per-wave artifacts read one `wave-state.json`; `wave-wiki.html` aggregates across all of them and is **rebuilt from scratch** every time (idempotent — never hand-edited, never appended in place), so a re-run, `--resume`, or a manually added/removed wave directory always self-heals. Templates ship with the skill (see `templates/` directory).
+## Artifact rendering — the orchestrator's job, never an agent's
+
+**JSON is canonical; HTML is presentation.** Agents write `wave-state.json` and nothing else. Every HTML artifact is produced by a deterministic renderer that ships with the skill:
+
+```bash
+stx-feature render docs/waves/<wave-id>            # every artifact with state behind it + the wiki
+stx-feature render docs/waves/<wave-id> --only wiki  # just the cross-wave index
+stx-feature validate docs/waves/<wave-id>          # check state without writing anything
+```
+
+**Resolving the binary** (first that exists wins):
+
+1. `node .claude/skills/stx-feature/stx-feature.js` — the installed skill dir.
+2. `npx stx-feature` — also the path for a `--link`ed dev install, whose skill dir symlinks the *source* tree and therefore has no compiled script.
+
+Run `render` after every agent hand-back, after every state change in the Dev loop, and at Step 8. It is idempotent: it overwrites, never appends, and an artifact with no state behind it yet is skipped rather than written empty.
+
+**Never hand-edit a rendered artifact.** Change `wave-state.json` and re-render. This is what makes the artifacts trustworthy: they cannot say something the state does not. Several things the personas used to be asked to remember are now structural — the Architect's "append a Revision, never overwrite the task" is just an `escalations[]` entry that renders as a Revision card, and per-task reviewer-rejection counts, total iterations, and the agent tally are computed at render time rather than stored and kept in sync by hand.
+
+`render` validates first and writes nothing if the state is malformed, naming the offending field path. Treat a validation failure as a halt condition, not something to render around.
+
+`wave-wiki.html` aggregates across every `docs/waves/wave-*/wave-state.json` and is **rebuilt from scratch** each time, so a re-run, `--resume`, or a manually added/removed wave directory always self-heals. Templates and the state schema ship with the skill (see `templates/`).
 
 ## Workflow
 
@@ -203,6 +226,18 @@ Also at this step: record the persona versions that will drive the wave. Read th
 
 This locks the wave to a specific release snapshot — essential for future cross-wave metrics aggregation.
 
+### Step 1.6 — Build the codebase map (mandatory, before any spawn)
+
+Every agent otherwise re-walks `components/`, `app/`, the service tree and the test layout to find the patterns it must cite. Do that walk once, here, and hand the result to all of them:
+
+```bash
+stx-feature map --root "$WT" --out "docs/waves/<wave-id>/codebase-map.md"
+```
+
+The map indexes components and their exported symbols, the route tree, services/lib, the test layout and runner configs, and the headings of `CLAUDE.md` / `AGENTS.md` / `docs/design-system.md`. It is an index, not a summary — agents still open what they need, they just no longer have to discover what exists. It degrades gracefully: a repo with no `app/` or `components/` tree gets those sections marked empty rather than an error.
+
+Pass its path to every agent you spawn from Step 2 onward.
+
 ### Step 2 — Requirement interview, then Analyst (Agent 1)
 
 **Interview first (orchestrator, not the Analyst).** Before spawning, interview the user via `AskUserQuestion` — grouped 2–4 questions per call — covering:
@@ -217,10 +252,16 @@ Record the Q&A transcript to `wave-state.json.interviews[]`.
 
 **Spawn:** `Agent` with `subagent_type: general-purpose` (or `Explore` for read-only research first if scoping is unclear). Prepend the **Worktree** block from Step 0.5, paste the contents of `.claude/agents/stx-analyst.md` into the agent's prompt verbatim, then append:
 
-> The current wave-state is at `<path-to-wave-state.json>`. The initial request is: `<initial_request>`. The bundled template for requirement-verse.html is at `<path-to-templates/requirement-verse.html>`.
+> The current wave-state is at `<path-to-wave-state.json>` — write your Features there and **write no HTML**; the orchestrator renders `requirement-verse.html` from your JSON. The codebase map is at `<path-to-codebase-map.md>`; read it before exploring the repo and open only the files it points you at. The initial request is: `<initial_request>`.
 >
 > ## Interview transcript
 > `<the full Q&A from the orchestrator-run interview>`
+
+After the Analyst hands back, render Gate 1's artifact:
+
+```bash
+stx-feature render docs/waves/<wave-id> --only requirement
+```
 
 The Analyst follows the contract in its persona file. Do not embed contract logic here. If the Analyst hands back an `open_questions[]` block instead of Features, run an open-questions round per the protocol above (ask the user, re-invoke with the extended transcript; max 2 rounds, then halt).
 
@@ -232,13 +273,27 @@ In **`--autonomous`** mode, skip the up-front interview entirely and append inst
 
 ### Step 3 — Architect (Agent 2)
 
+**Build the Architect's brief first** — do not hand it the rendered HTML:
+
+```bash
+stx-feature brief docs/waves/<wave-id> --for architect
+```
+
+This writes `briefs/architect.json`: the initial request, the out-of-scope list, and every Feature with its acceptance criteria — and none of the running logs. Handing the Architect `requirement-verse.html` *and* the `wave-state.json` it was rendered from is the same content twice, and the HTML is the larger copy.
+
 **Spawn:** `Agent` with `subagent_type: general-purpose`. Prepend the **Worktree** block from Step 0.5, paste the contents of `.claude/agents/stx-architect.md` into the agent's prompt verbatim, then append:
 
-> The approved requirement-verse.html is at `<path>`. The current wave-state is at `<path>`. The bundled template for architecture-verse.html is at `<path>`.
+> Your brief is at `<path-to-briefs/architect.json>` and the codebase map at `<path-to-codebase-map.md>`. Do NOT read `requirement-verse.html`. Write your Tasks into `<path-to-wave-state.json>` and **write no HTML** — the orchestrator renders `architecture-verse.html` from your JSON.
 
 The Architect follows the contract in its persona file. If the Architect hands back an `open_questions[]` block (implementation-strategy gaps) instead of Tasks, run an open-questions round per the protocol above (ask the user, re-invoke with the Q&A appended under `## Interview transcript`; max 2 rounds, then halt).
 
 In **`--autonomous`** mode, also append: `autonomous: true. Do NOT return open_questions[]; resolve any implementation gaps using best judgment and document each assumption inline in architecture-verse.html under "Autonomous assumptions" per Feature.`
+
+After the Architect hands back, render Gate 2's artifact:
+
+```bash
+stx-feature render docs/waves/<wave-id> --only architecture
+```
 
 ★ **Gate 2: user approves `architecture-verse.html`.** Scope is now FROZEN — anything not listed in tasks or marked in scope_paths is off-limits for the wave.
 
@@ -246,11 +301,23 @@ In **`--autonomous`** mode, also append: `autonomous: true. Do NOT return open_q
 
 ### Step 4 — QA Agent (Agent 3)
 
+**Build QA's brief first:**
+
+```bash
+stx-feature brief docs/waves/<wave-id> --for qa
+```
+
 **Spawn:** `Agent` with `subagent_type: general-purpose`. Prepend the **Worktree** block from Step 0.5, paste the contents of `.claude/agents/stx-qa.md` into the agent's prompt verbatim, then append:
 
-> The approved requirement-verse.html and architecture-verse.html are at `<paths>`. The current wave-state is at `<path>`. The bundled template for qa-verse.html is at `<path>`.
+> Your brief is at `<path-to-briefs/qa.json>` and the codebase map at `<path-to-codebase-map.md>`. Do NOT read `requirement-verse.html` or `architecture-verse.html`. Record `test_path`, `test_kind`, `coverage_summary` and `failure_output` (or `test_unwritable`) per task in `<path-to-wave-state.json>`, plus the wave-level `vitest_installed`, and **write no HTML** — the orchestrator renders `qa-verse.html` from those fields.
 
 The QA agent follows the **authoring contract** section of its persona file. If QA hands back an `open_questions[]` block (e.g. requesting approval to scaffold Vitest), run an open-questions round per the protocol above — scaffolding approval is a user decision the orchestrator collects via `AskUserQuestion`, never the subagent.
+
+After QA hands back, render Gate 3's artifact:
+
+```bash
+stx-feature render docs/waves/<wave-id> --only qa
+```
 
 ★ **Gate 3 (Dry-run boundary): user approves `qa-verse.html` AND the failing tests.** This is the most expensive gate to fail past — failing tests that encode the wrong acceptance criteria poison the rest of the wave.
 
@@ -276,9 +343,17 @@ After gate 3 approval, the orchestrator schedules Dev agents.
 | `api` | `.claude/agents/stx-dev-base.md` + `.claude/agents/stx-dev-tier-api.md` |
 | `ui` | `.claude/agents/stx-dev-base.md` + `.claude/agents/stx-dev-tier-ui.md` |
 
+**Build the Dev's task brief** before each spawn:
+
+```bash
+stx-feature brief docs/waves/<wave-id> --for dev --task <task.id>
+```
+
+This writes `briefs/dev-<task.id>.json`: that one task, its Feature's acceptance criteria, the frozen out-of-scope list, the caps, and the test path — and nothing about the other tasks in the wave.
+
 After concatenating the two persona files, prepend the **Worktree** block from Step 0.5, then append the task-specific context:
 
-> Your task is `<task.id> — <task.title>`. The failing test is at `<task.test_path>`. `scope_paths`: `<task.scope_paths>`. `existing_patterns_to_follow`: `<task.existing_patterns_to_follow>`. The architecture-verse.html with the frozen out-of-scope list is at `<path>`.
+> Your task is `<task.id> — <task.title>`. Your brief is at `<path-to-briefs/dev-<task.id>.json>` and the codebase map at `<path-to-codebase-map.md>`. The failing test is at `<task.test_path>`. Do NOT read `architecture-verse.html` — everything you need about your task, including the frozen out-of-scope list, is in the brief.
 
 The Dev follows the contract in its persona files. Do not re-explain Dev rules here — the persona files are the source of truth.
 
@@ -305,12 +380,20 @@ QA reruns test independently      ← .claude/agents/stx-qa.md verification cont
 
 **Why the Reviewer sits between Dev and QA.** Without a Reviewer, QA's rerun is the only signal between "Dev says done" and "task closed." A Dev that mocks the system-under-test or weakens the assertion can drive QA green and bypass the test the bug was written to catch. The Reviewer is the integrity gate: it reads the diff, line-by-line, before QA touches it. Its verdict is appended to `wave-state.json.reviewer_verdicts[]` per iteration.
 
-**Spawning the Reviewer.** After every Dev hand-back, spawn the Reviewer via `Agent` with `subagent_type: general-purpose`. Prepend the **Worktree** block from Step 0.5, paste the contents of `.claude/agents/stx-reviewer.md` verbatim, then append:
+**Spawning the Reviewer.** After every Dev hand-back, rebuild the task brief so the Reviewer sees the prior verdicts on this task:
 
-> The Dev's diff (full output of `git diff` since the last accepted state) is below. The task spec is at `<path-to-architecture-verse.html>`, task id `<task.id>`. The failing test file is at `<task.test_path>`. Prior reviewer_verdicts[] for this task: `<json>`. Apply your checklist and emit your verdict per the persona contract.
+```bash
+stx-feature brief docs/waves/<wave-id> --for reviewer --task <task.id>
+```
+
+Then spawn the Reviewer via `Agent` with `subagent_type: general-purpose`. Prepend the **Worktree** block from Step 0.5, paste the contents of `.claude/agents/stx-reviewer.md` verbatim, then append:
+
+> The Dev's diff (full output of `git diff` since the last accepted state) is below. Your brief is at `<path-to-briefs/reviewer-<task.id>.json>` — it carries the task spec, the frozen out-of-scope list, and your prior verdicts on this task. Apply your checklist and emit your verdict per the persona contract.
+
+**Re-render as state changes.** After each iteration closes (a verdict appended, a task marked done, a `suspicious[]` event logged), run `stx-feature render docs/waves/<wave-id>` so the artifacts on disk match the state. This is cheap and idempotent; skipping it is how artifacts drift.
 
 **Caps:**
-- **Soft cap — 3 iterations on the same task:** halt this task, escalate to Architect. An iteration is incremented by **either** a Reviewer rejection **or** a QA red — both count. Re-spawn the Architect with its persona file plus the task context + the latest reviewer verdict. Architect may amend `architecture-verse.html` (append a "Revision N" section — never overwrite), then the loop resumes.
+- **Soft cap — 3 iterations on the same task:** halt this task, escalate to Architect. An iteration is incremented by **either** a Reviewer rejection **or** a QA red — both count. Re-spawn the Architect with its persona file plus the task brief + the latest reviewer verdict. The Architect appends an entry to `wave-state.json.escalations[]` (and amends the task in place if needed); re-rendering turns that entry into a "Revision N" card in §3 of `architecture-verse.html` while §2 keeps the original task block. Then the loop resumes.
 - **Hard cap — 5 total iterations on the same task:** halt the wave for this task. Write `handoff.md` and surface to user.
 - **Reviewer halt verdict — instant wave halt for this task:** `test-file-edit-detected`, `assertion-weakened`, or `sut-mocked` short-circuits the loop without incrementing counters. The user decides whether to escalate to Architect or close out the wave.
 
@@ -325,23 +408,17 @@ QA's pause authority (build breaks twice, scope violation, test-bypass detection
 
 Final orchestrator step:
 
-1. Update `wave-state.json` with final status.
-2. Render `result.html` from the bundled template, including:
-   - Per-feature, per-task status table
-   - Iteration counts per task (broken down: Reviewer rejections vs QA reds)
-   - `reviewer_verdicts[]` array per task (the full verdict trail with concerns/suggestions)
-   - `suspicious[]` array fully rendered (one row per event)
-   - `escalations[]` (when Architect was re-engaged)
-   - `persona_versions` (the locked snapshot from Step 1)
-   - Files touched (deduplicated)
-   - Total agents spawned and total run time (now includes reviewer count)
-3. **Rebuild `docs/waves/wave-wiki.html`** from the bundled template (`templates/wave-wiki.html`):
-   - Scan **every** `docs/waves/wave-*/wave-state.json` (not just this wave's). `fix-*/` folders are excluded and are aggregated separately in `docs/waves/fix-wiki.html` by `/stx-fix`.
-   - For each, read `wave_id`, `wave_slug`, `status`, `started_at`, `finished_at`, `initial_request` (trim to ~140 chars), feature count (`features.length`) and how many are `done`.
-   - Set each row's link to `./{{wave_id}}/result.html` when that file exists, else `./{{wave_id}}/`.
-   - Sort rows by `started_at` descending (newest first) and render **all** waves, regardless of status, with a status badge.
-   - This is a full regenerate, not an append — overwrite the file each time so it stays consistent with the wave directories on disk.
-4. Surface to user with a one-paragraph summary and next-action prompt (commit? PR?). **`--autonomous`:** the summary still surfaces, but the orchestrator does NOT run a commit/push/PR even if all tasks are green. State explicitly: *"Wave complete. Changes are uncommitted on `<branch>`. Run `/stx-checkin` or `/stx-pr-merge` to ship."* This matches the global autonomous-agent rule: never commit/deploy unattended.
+1. **Complete `wave-state.json`.** Set the final `status`, `finished_at`, `files_touched[]` (deduplicated, with add/del counts), `agents_spawned` per role, and `next_action` — one line telling the user what to do next. The result page is rendered from these fields, so anything missing here is missing from the report.
+
+2. **Render everything:**
+
+   ```bash
+   stx-feature render docs/waves/<wave-id>
+   ```
+
+   This writes `result.html` and rebuilds `docs/waves/wave-wiki.html` in one pass. `result.html` carries the gates audit trail, the per-feature/per-task status table, per-task reviewer-rejection counts, the full `reviewer_verdicts[]` trail with concerns and suggestions, every `suspicious[]` event, the Architect `escalations[]`, files touched, and the derived iteration and agent totals. The wiki scans **every** `docs/waves/wave-*/wave-state.json`, sorts by `started_at` descending, links each row to that wave's `result.html` when it exists, and is regenerated from scratch rather than appended. `fix-*/` folders are excluded — `/stx-fix` aggregates those into `docs/waves/fix-wiki.html`.
+
+3. Surface to user with a one-paragraph summary and next-action prompt (commit? PR?). **`--autonomous`:** the summary still surfaces, but the orchestrator does NOT run a commit/push/PR even if all tasks are green. State explicitly: *"Wave complete. Changes are uncommitted on `<branch>`. Run `/stx-checkin` or `/stx-pr-merge` to ship."* This matches the global autonomous-agent rule: never commit/deploy unattended.
 
 ## Iteration caps (summary)
 
@@ -358,6 +435,7 @@ The skill stops and surfaces — never silently continues — when:
 
 - Worktree state cannot be confirmed (detached HEAD, no git, etc.).
 - A persona file under `.claude/agents/` cannot be read at spawn time (treat as a fatal config error — do not fall back to inline prompts).
+- `stx-feature validate` (or the validation inside `render`) rejects `wave-state.json`. The renderer names the offending field path and writes nothing. Fix the state — never hand-write the HTML to work around it, and never disable the check.
 - The user declines any of the three gates.
 - The Analyst cannot extract features from the initial_request (vague request — surfaces a clarifying interview round, run by the orchestrator).
 - An agent's `open_questions[]` rounds exceed the cap (2 per agent per step) — the request is under-specified; halt and surface the unresolved questions.
@@ -381,12 +459,23 @@ The skill stops and surfaces — never silently continues — when:
 
 `--autonomous` requires a feature description (positional argument or after the flag). Invoking `/stx-feature --autonomous` with no description halts immediately — the skill never fabricates `initial_request`. See **Autonomous mode** under Governance for the full list of what is and isn't bypassed.
 
-This skill does not have a CLI binary — it is purely conversational and runs inside the assistant. The skill writes to disk: `docs/waves/wave-<slug>-<xxxx>/` in the consuming project.
+The skill itself is conversational — you drive it with `/stx-feature`, not from a shell. It does ship one supporting binary, which the orchestrator calls on the user's behalf and which is safe to run by hand:
+
+```
+stx-feature map    [--root <dir>] [--out <file>]                  # build codebase-map.md
+stx-feature brief  <wave-dir> --for <role> [--task <id>]          # slice state for one agent
+stx-feature validate <wave-dir>                                   # check state, write nothing
+stx-feature render <wave-dir> [--only requirement,architecture,qa,result,wiki]
+```
+
+Roles for `brief`: `analyst`, `architect`, `qa`, `reviewer`, `dev` (the last two require `--task`). All four subcommands are read-only with respect to the consuming project's source — they only touch `docs/waves/`.
+
+The skill writes to disk: `docs/waves/wave-<slug>-<xxxx>/` in the consuming project.
 
 ## Requirements
 
 - Git 2.30+ for modern `git worktree` semantics.
-- Node.js 18+ for `npm run lint` / `npm run build`.
+- Node.js 18+ — for the bundled `stx-feature` renderer as well as `npm run lint` / `npm run build`.
 - A buildable command and at least one test runner in the consuming project (Playwright, Vitest, or both). Vitest is scaffolded only with user approval.
 - For browser verification: Chrome DevTools or Playwright MCP server registered in the session.
 - The eight persona files at `.claude/agents/stx-{analyst,architect,qa,dev-base,dev-tier-db,dev-tier-service,dev-tier-api,dev-tier-ui}.md`. The installer copies these alongside `.claude/skills/`.
@@ -396,7 +485,8 @@ This skill does not have a CLI binary — it is purely conversational and runs i
 - [`AGENTS.md`](../../../AGENTS.md) — repo-root persona inventory
 - [`template.md`](./template.md) — the embedded orchestrator prompt template
 - [`README.md`](./README.md) — design notes and rationale
-- [`templates/`](./templates/) — bundled HTML templates and state JSON schema
+- [`templates/`](./templates/) — bundled HTML templates and `wave-state.schema.json`
+- [`stx-feature.js`](./stx-feature.js) — the bundled renderer (source: `src/skills/stx-feature.ts`, engine: `src/lib/template.ts`)
 - [`/stx-fix`](../stx-fix/SKILL.md) — the single-bug sibling skill (shares `stx-qa.md`)
 - [`/stx-checkin`](../stx-checkin/SKILL.md) — used to commit/push after wave completion
 - [`/stx-pr-merge`](../stx-pr-merge/SKILL.md) — used to open and merge the wave PR

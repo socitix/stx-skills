@@ -13,8 +13,8 @@
     ]
   },
   "card": {
-    "summary": "Multi-agent feature wave. Analyst → Architect → QA → Dev with Reviewer gate between Dev and QA. Three approval gates, orchestrator-run interviews (subagents can't reach the user), tier-specialized Devs, suspicious-change tracking, reviewer_verdicts[] trail. <code>--autonomous</code> mode auto-approves all gates for unattended runs (never commits). Personas live in <code>.claude/agents/</code>.",
-    "paragraph": "Drives a multi-agent feature wave. Spawns a worktree, interviews the user up front (orchestrator-run — agents that hit a blocking ambiguity hand back an <code>open_questions[]</code> block instead of asking directly), runs Analyst → Architect → QA in sequence (each behind a user gate unless <code>--autonomous</code>), then dispatches tier-specialized Dev agents under QA control until all tests are green.",
+    "summary": "Multi-agent feature wave. Analyst → Architect → QA → Dev with Reviewer gate between Dev and QA. Three approval gates, orchestrator-run interviews (subagents can't reach the user), tier-specialized Devs, suspicious-change tracking, reviewer_verdicts[] trail. Agents write only <code>wave-state.json</code>; every HTML artifact is rendered from it deterministically, so the two can't drift. <code>--autonomous</code> mode auto-approves all gates for unattended runs (never commits). Personas live in <code>.claude/agents/</code>.",
+    "paragraph": "Drives a multi-agent feature wave. Spawns a worktree, builds a <code>codebase-map.md</code> index once so no agent has to re-walk the repo, interviews the user up front (orchestrator-run — agents that hit a blocking ambiguity hand back an <code>open_questions[]</code> block instead of asking directly), then runs Analyst → Architect → QA in sequence (each behind a user gate unless <code>--autonomous</code>), then dispatches tier-specialized Dev agents under QA control until all tests are green. Each agent gets a <code>brief</code> — the slice of state its role needs — rather than the previous agent's rendered HTML.",
     "use_when": [
       "Feature decomposes into multiple tasks across tiers",
       "You want failing tests written before any code",
@@ -26,23 +26,73 @@
       "You're already inside a worktree (main-bound)"
     ],
     "invocations": [
-      { "comment": "Fully interactive", "cmd": "/stx-feature" },
-      { "comment": "Seed initial_request, then interactive", "cmd": "/stx-feature Implement multi-delete feature for Admins on Dashboard" },
-      { "comment": "Autonomous — auto-approve all 3 gates; never commits", "cmd": "/stx-feature <o>--autonomous</o> Implement multi-delete feature for Admins on Dashboard" },
-      { "comment": "Resume a halted wave (planned)", "cmd": "/stx-feature <o>--resume</o> wave-admin-multi-delete-7f3a" }
+      {
+        "comment": "Fully interactive",
+        "cmd": "/stx-feature"
+      },
+      {
+        "comment": "Seed initial_request, then interactive",
+        "cmd": "/stx-feature Implement multi-delete feature for Admins on Dashboard"
+      },
+      {
+        "comment": "Autonomous — auto-approve all 3 gates; never commits",
+        "cmd": "/stx-feature <o>--autonomous</o> Implement multi-delete feature for Admins on Dashboard"
+      },
+      {
+        "comment": "Resume a halted wave (planned)",
+        "cmd": "/stx-feature <o>--resume</o> wave-admin-multi-delete-7f3a"
+      }
     ],
     "extras": [
       {
         "kind": "table",
         "title": "Artifacts produced",
-        "headers": ["File", "Owner", "Purpose"],
+        "headers": [
+          "File",
+          "Owner",
+          "Purpose"
+        ],
         "rows": [
-          ["wave-state.json", "Orchestrator", "Canonical state — features, tasks, suspicious[], escalations[], gates[]"],
-          ["requirement-verse.html", "Analyst", "Gate 1 artifact"],
-          ["architecture-verse.html", "Architect", "Gate 2 — freezes out-of-scope"],
-          ["qa-verse.html", "QA", "Gate 3 — dry-run boundary"],
-          ["result.html", "Orchestrator", "End-of-wave summary (incl. auto-approved gates)"],
-          ["handoff.md", "Orchestrator", "Only on halt"]
+          [
+            "wave-state.json",
+            "Agents",
+            "Canonical state and the <strong>only file agents write</strong> — features, tasks, suspicious[], escalations[], gates[]"
+          ],
+          [
+            "codebase-map.md",
+            "<code>stx-feature map</code>",
+            "Index of components, routes, services, tests and doc headings — built once per wave"
+          ],
+          [
+            "briefs/*.json",
+            "<code>stx-feature brief</code>",
+            "Per-role slices of state handed to each agent at spawn"
+          ],
+          [
+            "requirement-verse.html",
+            "Rendered",
+            "Gate 1 artifact"
+          ],
+          [
+            "architecture-verse.html",
+            "Rendered",
+            "Gate 2 — freezes out-of-scope; §3 Revisions derived from escalations[]"
+          ],
+          [
+            "qa-verse.html",
+            "Rendered",
+            "Gate 3 — dry-run boundary"
+          ],
+          [
+            "result.html",
+            "Rendered",
+            "End-of-wave summary (gates, reviewer verdicts, suspicious changes)"
+          ],
+          [
+            "handoff.md",
+            "Orchestrator",
+            "Only on halt"
+          ]
         ]
       },
       {
@@ -53,6 +103,16 @@
           "<strong>Hard cap 5 / task</strong> — wave halts, handoff.md written.",
           "<strong>Suspicious-changes 3 / task</strong> — auto-halt task (scope-drift, test-file touch, mock-of-SUT, build-break).",
           "<strong>Autonomous never bypasses</strong> reviewer halt verdicts, iteration caps, destructive ops, or commit/PR steps."
+        ]
+      },
+      {
+        "kind": "bullets",
+        "title": "Deterministic artifacts",
+        "items": [
+          "<strong>Agents write JSON, never HTML.</strong> The bundled <code>stx-feature render</code> produces every artifact from <code>wave-state.json</code>, so the HTML cannot say something the state does not.",
+          "<strong>Derived, not stored:</strong> Architect Revisions come from <code>escalations[]</code>; reviewer-rejection counts, iteration totals and agent tallies are computed at render time.",
+          "<strong>Validation is a halt condition.</strong> <code>stx-feature validate</code> rejects malformed state by field path and the renderer writes nothing.",
+          "<strong>Never hand-edit a rendered artifact</strong> — change the state and re-render. Rendering is idempotent."
         ]
       }
     ]

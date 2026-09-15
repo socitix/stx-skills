@@ -1607,13 +1607,13 @@
       <details class="skill" id="sk-stx-feature">
         <summary>
           <span class="ico">F</span>
-          <span class="nm">/stx-feature<span class="one">Multi-agent feature wave. Analyst → Architect → QA → Dev with Reviewer gate between Dev and QA. Three approval gates, orchestrator-run interviews (subagents can't reach the user), tier-specialized Devs, suspicious-change tracking, reviewer_verdicts[] trail. <code>--autonomous</code> mode auto-approves all gates for unattended runs (never commits). Personas live in <code>.claude/agents/</code>.</span></span>
+          <span class="nm">/stx-feature<span class="one">Multi-agent feature wave. Analyst → Architect → QA → Dev with Reviewer gate between Dev and QA. Three approval gates, orchestrator-run interviews (subagents can't reach the user), tier-specialized Devs, suspicious-change tracking, reviewer_verdicts[] trail. Agents write only <code>wave-state.json</code>; every HTML artifact is rendered from it deterministically, so the two can't drift. <code>--autonomous</code> mode auto-approves all gates for unattended runs (never commits). Personas live in <code>.claude/agents/</code>.</span></span>
           <span class="type type-main">main-bound</span>
           <span class="ver">v1.11</span>
           <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
         </summary>
         <div class="body">
-          <p>Drives a multi-agent feature wave. Spawns a worktree, interviews the user up front (orchestrator-run — agents that hit a blocking ambiguity hand back an <code>open_questions[]</code> block instead of asking directly), runs Analyst → Architect → QA in sequence (each behind a user gate unless <code>--autonomous</code>), then dispatches tier-specialized Dev agents under QA control until all tests are green.</p>
+          <p>Drives a multi-agent feature wave. Spawns a worktree, builds a <code>codebase-map.md</code> index once so no agent has to re-walk the repo, interviews the user up front (orchestrator-run — agents that hit a blocking ambiguity hand back an <code>open_questions[]</code> block instead of asking directly), then runs Analyst → Architect → QA in sequence (each behind a user gate unless <code>--autonomous</code>), then dispatches tier-specialized Dev agents under QA control until all tests are green. Each agent gets a <code>brief</code> — the slice of state its role needs — rather than the previous agent's rendered HTML.</p>
 
           <div class="blocks">
             <div class="block use"><div class="lbl">Use when</div><ul>
@@ -1645,11 +1645,13 @@
           <table class="deftbl">
             <thead><tr><th>File</th><th>Owner</th><th>Purpose</th></tr></thead>
             <tbody>
-              <tr><td class="k">wave-state.json</td><td>Orchestrator</td><td>Canonical state — features, tasks, suspicious[], escalations[], gates[]</td></tr>
-              <tr><td class="k">requirement-verse.html</td><td>Analyst</td><td>Gate 1 artifact</td></tr>
-              <tr><td class="k">architecture-verse.html</td><td>Architect</td><td>Gate 2 — freezes out-of-scope</td></tr>
-              <tr><td class="k">qa-verse.html</td><td>QA</td><td>Gate 3 — dry-run boundary</td></tr>
-              <tr><td class="k">result.html</td><td>Orchestrator</td><td>End-of-wave summary (incl. auto-approved gates)</td></tr>
+              <tr><td class="k">wave-state.json</td><td>Agents</td><td>Canonical state and the <strong>only file agents write</strong> — features, tasks, suspicious[], escalations[], gates[]</td></tr>
+              <tr><td class="k">codebase-map.md</td><td><code>stx-feature map</code></td><td>Index of components, routes, services, tests and doc headings — built once per wave</td></tr>
+              <tr><td class="k">briefs/*.json</td><td><code>stx-feature brief</code></td><td>Per-role slices of state handed to each agent at spawn</td></tr>
+              <tr><td class="k">requirement-verse.html</td><td>Rendered</td><td>Gate 1 artifact</td></tr>
+              <tr><td class="k">architecture-verse.html</td><td>Rendered</td><td>Gate 2 — freezes out-of-scope; §3 Revisions derived from escalations[]</td></tr>
+              <tr><td class="k">qa-verse.html</td><td>Rendered</td><td>Gate 3 — dry-run boundary</td></tr>
+              <tr><td class="k">result.html</td><td>Rendered</td><td>End-of-wave summary (gates, reviewer verdicts, suspicious changes)</td></tr>
               <tr><td class="k">handoff.md</td><td>Orchestrator</td><td>Only on halt</td></tr>
             </tbody>
           </table>
@@ -1660,6 +1662,14 @@
             <li><strong>Hard cap 5 / task</strong> — wave halts, handoff.md written.</li>
             <li><strong>Suspicious-changes 3 / task</strong> — auto-halt task (scope-drift, test-file touch, mock-of-SUT, build-break).</li>
             <li><strong>Autonomous never bypasses</strong> reviewer halt verdicts, iteration caps, destructive ops, or commit/PR steps.</li>
+          </ul>
+
+          <h4>Deterministic artifacts</h4>
+          <ul>
+            <li><strong>Agents write JSON, never HTML.</strong> The bundled <code>stx-feature render</code> produces every artifact from <code>wave-state.json</code>, so the HTML cannot say something the state does not.</li>
+            <li><strong>Derived, not stored:</strong> Architect Revisions come from <code>escalations[]</code>; reviewer-rejection counts, iteration totals and agent tallies are computed at render time.</li>
+            <li><strong>Validation is a halt condition.</strong> <code>stx-feature validate</code> rejects malformed state by field path and the renderer writes nothing.</li>
+            <li><strong>Never hand-edit a rendered artifact</strong> — change the state and re-render. Rendering is idempotent.</li>
           </ul>
         </div>
       </details>

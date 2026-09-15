@@ -1,30 +1,28 @@
 <!doctype html>
 <!--
 ================================================================================
-  qa-verse.html — QA Agent (Agent 3) output template.
+  qa-verse.html — Gate 3 artifact (dry-run boundary).
 
-  Rendered after Gate 3 from wave-state.json. Lists every failing test
-  written for the wave, mapped to the Task it covers. Includes paste of
-  the failure output as evidence the tests fail for the right reason.
+  DETERMINISTICALLY RENDERED. QA writes per-task test fields into
+  wave-state.json (test_path, test_kind, coverage_summary, failure_output, or
+  test_unwritable) and nothing else; the orchestrator renders this file with
 
-  PLACEHOLDERS:
-    {{WAVE_ID}}
-    {{WAVE_SLUG}}
-    {{GENERATED_AT}}
-    {{VITEST_INSTALLED}}         "yes" | "no" | "not needed"
-    {{#each test_entries}}
-      {{task_id}}                F1-T1
-      {{feature_id}}             F1
-      {{test_kind}}              playwright | e2e | vitest-unit
-      {{test_path}}              relative path
-      {{coverage_summary}}       one sentence: what does this test assert?
-      {{failure_output}}         pasted output from initial failing run
-    {{/each}}
-    {{#each unwritable}}         tasks QA could NOT write a test for
-      {{task_id}}
-      {{reason}}
-      {{manual_protocol}}        proposed manual verification steps
-    {{/each}}
+      node .claude/skills/stx-feature/stx-feature.js render <wave-dir>
+
+  Never hand-edit a rendered artifact — edit wave-state.json and re-render.
+
+  Both tables are DERIVED from features[].tasks[] — there is no separate
+  test_entries[] in state to drift out of sync with the task list.
+
+  Engine: the Handlebars subset in src/lib/template.ts (see requirement-verse.html).
+
+  CONTEXT (built by buildQaContext in src/skills/stx-feature.ts):
+    WAVE_ID, WAVE_SLUG, GENERATED_AT, VITEST_INSTALLED
+    test_entries[]   task_id, feature_id, test_kind, test_path, coverage_summary,
+                     failure_output
+    unwritable[]     task_id, reason, manual_protocol
+    has_unwritable   boolean — unwritable[] is non-empty
+    no_unwritable    boolean — the inverse (the engine has no "else" block)
 ================================================================================
 -->
 <html lang="en">
@@ -32,12 +30,12 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>QA Verse — {{WAVE_ID}}</title>
-{{INLINE_STYLES}}
+{{{INLINE_STYLES}}}
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="eyebrow">Wave artifact · written by Agent 3 (QA)</div>
+    <div class="eyebrow">Wave artifact · rendered from wave-state.json (QA phase)</div>
     <h1>QA Verse</h1>
     <div class="meta">
       <code>{{WAVE_ID}}</code> · slug <code>{{WAVE_SLUG}}</code> · generated <code>{{GENERATED_AT}}</code> · vitest <code>{{VITEST_INSTALLED}}</code>
@@ -52,7 +50,7 @@
       <tr>
         <th style="width:80px">Task</th>
         <th style="width:110px">Kind</th>
-        <th>Test path & what it asserts</th>
+        <th>Test path &amp; what it asserts</th>
       </tr>
     </thead>
     <tbody>
@@ -74,6 +72,7 @@
   </table>
 
   <h2><span class="num">§2</span> Tasks without a test (require manual verification)</h2>
+  {{#if has_unwritable}}
   {{#each unwritable}}
   <div class="danger">
     <strong>Task <code>{{task_id}}</code></strong> could not be automated. Reason: {{reason}}
@@ -81,6 +80,10 @@
     <p>{{manual_protocol}}</p>
   </div>
   {{/each}}
+  {{/if}}
+  {{#if no_unwritable}}
+  <div class="note">Every task in this wave has an automated failing test. Nothing here needs manual verification.</div>
+  {{/if}}
 
   <h2><span class="num">§3</span> Gate 3 — Dry-run boundary</h2>
   <div class="note">

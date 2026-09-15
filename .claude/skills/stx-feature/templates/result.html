@@ -1,70 +1,32 @@
 <!doctype html>
 <!--
 ================================================================================
-  result.html — Wave summary template, written by orchestrator at end of wave.
+  result.html — end-of-wave summary.
 
-  Rendered from final wave-state.json. Includes per-feature/per-task table,
-  iteration counts, suspicious[] events, Architect escalations, files touched.
+  DETERMINISTICALLY RENDERED from the final wave-state.json by
 
-  PLACEHOLDERS:
-    {{WAVE_ID}}
-    {{WAVE_SLUG}}
-    {{STARTED_AT}}
-    {{FINISHED_AT}}
-    {{STATUS}}                   done | halted-at-cap | blocked
-    {{TOTAL_ITERATIONS}}
-    {{AGENTS_SPAWNED}}           e.g. "Analyst×1, Architect×1, QA×1, Reviewer×9, Dev×7"
-    {{COMMIT_POLICY}}            from interview
-    {{NEXT_ACTION}}              one-line recommendation for the user
-    {{#each features}}
-      {{id}}                     F1
-      {{title}}
-      {{status}}                 done | halted | partial
-      {{#each tasks}}
-        {{id}}                   F1-T1
-        {{title}}
-        {{tier}}
-        {{iterations_used}}
-        {{reviewer_rejection_count}}   tally of approved=false from this task's reviewer_verdicts[]
-        {{status}}               done | halted | skipped
-        {{notes}}                one short line if anything notable
-      {{/each}}
-    {{/each}}
-    {{#each suspicious}}
-      {{at}}                     timestamp
-      {{task_id}}
-      {{dev_id}}                 agent run id
-      {{kind}}                   scope-drift | test-file-touch | mock-of-sut | build-break
-      {{description}}
-      {{resolution}}             resolved | accepted | open
-    {{/each}}
-    {{#each reviewer_verdicts}}
-      {{task_id}}                F1-T2
-      {{iteration}}              1, 2, 3 …
-      {{at}}                     timestamp
-      {{approved}}               true | false
-      {{verdict}}                approved | concerns | test-file-edit-detected | assertion-weakened | sut-mocked
-      {{diff_summary}}           {files_in_scope, files_out_of_scope, lines_added, lines_removed}
-      {{#each concerns}}
-        {{kind}}                 scope-drift | pattern-divergence | result-shape | typing | …
-        {{file}} : {{line}}
-        {{summary}}
-        {{severity}}             high | medium | low
-      {{/each}}
-      {{suggested_revisions}}    list of one-line revision suggestions
-    {{/each}}
-    {{#each escalations}}
-      {{n}}
-      {{task_id}}
-      {{at}}
-      {{trigger}}                soft-cap-hit | suspicious-ceiling | qa-pause | reviewer-halt
-      {{architect_summary}}      what changed in architecture-verse.html
-    {{/each}}
-    {{#each files_touched}}
-      {{path}}
-      {{add}}                    lines added
-      {{del}}                    lines deleted
-    {{/each}}
+      node .claude/skills/stx-feature/stx-feature.js render <wave-dir>
+
+  Never hand-edit a rendered artifact — edit wave-state.json and re-render.
+
+  Engine: the Handlebars subset in src/lib/template.ts (see requirement-verse.html).
+
+  CONTEXT (built by buildResultContext in src/skills/stx-feature.ts). Everything
+  marked DERIVED is computed at render time and is therefore never stored twice:
+    WAVE_ID, WAVE_SLUG, STARTED_AT, FINISHED_AT, STATUS, COMMIT_POLICY, NEXT_ACTION
+    GENERATED_AT
+    TOTAL_ITERATIONS          DERIVED — sum of every task's iterations_used
+    AGENTS_SPAWNED            DERIVED — "Analyst×1, Architect×1, …" from agents_spawned
+    gates[]                   gate, approval_label, approval_class, approved_at, reason
+    features[]                id, title, status, tasks[]
+      tasks[]                 id, title, tier, iterations_used, status, notes,
+                              reviewer_rejection_count  DERIVED from reviewer_verdicts[]
+    reviewer_verdicts[]       task_id, iteration, at, approved, verdict,
+                              concerns[] (kind, severity, file, line, summary),
+                              suggested_revisions[]
+    suspicious[]              at, task_id, kind, description, resolution
+    escalations[]             n, at, task_id, trigger, architect_summary
+    files_touched[]           path, add, del
 ================================================================================
 -->
 <html lang="en">
@@ -72,12 +34,12 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Wave Result — {{WAVE_ID}}</title>
-{{INLINE_STYLES}}
+{{{INLINE_STYLES}}}
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="eyebrow">Wave artifact · written by orchestrator at wave end</div>
+    <div class="eyebrow">Wave artifact · rendered from wave-state.json at wave end</div>
     <h1>Wave Result</h1>
     <div class="meta">
       <code>{{WAVE_ID}}</code> · slug <code>{{WAVE_SLUG}}</code> · status <code>{{STATUS}}</code><br>
@@ -92,7 +54,30 @@
     <p><strong>Next action awaiting user:</strong> {{NEXT_ACTION}}</p>
   </div>
 
-  <h2><span class="num">§2</span> Features and Tasks</h2>
+  <h2><span class="num">§2</span> Gates</h2>
+  <p>Every gate approval in this wave. A run with <code>--autonomous</code> auto-approves the three artifact gates; each one is still logged here so it is visible which pauses were skipped and why.</p>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:200px">Gate</th>
+        <th style="width:150px">Approval</th>
+        <th style="width:190px">When</th>
+        <th>Reason</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each gates}}
+      <tr>
+        <td><code>{{gate}}</code></td>
+        <td><span class="status status-{{approval_class}}">{{approval_label}}</span></td>
+        <td style="font-size:12.5px;color:var(--muted)">{{approved_at}}</td>
+        <td style="font-size:13px;color:var(--muted)">{{reason}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <h2><span class="num">§3</span> Features and Tasks</h2>
   {{#each features}}
   <div class="card">
     <div class="card-header">
@@ -131,7 +116,7 @@
   </div>
   {{/each}}
 
-  <h2><span class="num">§3</span> Reviewer verdicts</h2>
+  <h2><span class="num">§4</span> Reviewer verdicts</h2>
   <p>Append-only log of every Reviewer spawn. <code>concerns</code> = approved-false with one or more named concerns (counts toward soft cap). <code>test-file-edit-detected</code> / <code>assertion-weakened</code> / <code>sut-mocked</code> = instant halt verdicts (no counter increment, immediate wave stop for the task).</p>
   <table>
     <thead>
@@ -154,7 +139,7 @@
         <td><code>{{verdict}}</code></td>
         <td style="font-size:13px;color:var(--muted)">
           {{#each concerns}}
-          <div><strong>{{kind}}</strong> ({{severity}}) {{#if file}}<code>{{file}}:{{line}}</code>{{/if}} — {{summary}}</div>
+          <div><strong>{{kind}}</strong> ({{severity}}) {{#if file}}<code>{{file}}{{line_suffix}}</code>{{/if}} — {{summary}}</div>
           {{/each}}
           {{#each suggested_revisions}}
           <div style="opacity:0.75;font-style:italic">→ {{.}}</div>
@@ -165,7 +150,7 @@
     </tbody>
   </table>
 
-  <h2><span class="num">§4</span> Suspicious events</h2>
+  <h2><span class="num">§5</span> Suspicious events</h2>
   <p>Real-time log of scope-drift, test-file touches, mocks-of-SUT, and unrelated build breaks. Each event was flagged by QA when it happened; the rows below are the audit trail.</p>
   <table>
     <thead>
@@ -190,8 +175,8 @@
     </tbody>
   </table>
 
-  <h2><span class="num">§5</span> Architect escalations</h2>
-  <p>Each row is a soft-cap trip that re-engaged the Architect. The Architect amended architecture-verse.html — see Revisions section there for the deltas.</p>
+  <h2><span class="num">§6</span> Architect escalations</h2>
+  <p>Each row is a soft-cap trip that re-engaged the Architect. Each one also renders as a Revision in §3 of architecture-verse.html — see there for the deltas.</p>
   <table>
     <thead>
       <tr>
@@ -215,7 +200,7 @@
     </tbody>
   </table>
 
-  <h2><span class="num">§6</span> Files touched</h2>
+  <h2><span class="num">§7</span> Files touched</h2>
   <table>
     <thead>
       <tr>
@@ -234,6 +219,11 @@
       {{/each}}
     </tbody>
   </table>
+
+  <footer style="margin-top:48px;color:var(--muted);font-size:12.5px">
+    Rendered <code>{{GENERATED_AT}}</code> from <code>wave-state.json</code>. Regenerate with
+    <code>stx-feature render &lt;wave-dir&gt;</code>.
+  </footer>
 </div>
 </body>
 </html>

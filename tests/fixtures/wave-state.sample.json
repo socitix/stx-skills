@@ -1,0 +1,204 @@
+{
+  "wave_id": "wave-sample-render-a1b2",
+  "wave_slug": "sample-render",
+  "started_at": "2026-09-01T09:00:00Z",
+  "finished_at": "2026-09-01T12:34:00Z",
+  "status": "done",
+  "initial_request": "Render every wave artifact from wave-state.json instead of having each agent hand-write HTML.\n\nThe second paragraph exists to prove paragraph splitting, and this <script> tag proves escaping.",
+  "worktree_path": "/tmp/wave-sample-render",
+  "branch": "feat/wave-sample-render",
+  "main_worktree_path": "/tmp/main",
+  "config": {
+    "soft_cap": 3,
+    "hard_cap": 5,
+    "suspicious_ceiling": 3,
+    "max_parallel_devs": 3,
+    "continue_past_dry_run": true,
+    "vitest_install_allowed": false,
+    "use_browser_mcp": true,
+    "commit_policy": "no-commit",
+    "autonomous": true
+  },
+  "gates": [
+    { "gate": "worktree", "auto_approved": false, "approved_at": "2026-09-01T09:01:00Z", "reason": "" },
+    { "gate": "requirement_verse", "auto_approved": true, "approved_at": "2026-09-01T09:20:00Z", "reason": "autonomous mode" },
+    { "gate": "architecture_verse", "auto_approved": true, "approved_at": "2026-09-01T09:50:00Z", "reason": "autonomous mode" },
+    { "gate": "qa_verse", "auto_approved": true, "approved_at": "2026-09-01T10:20:00Z", "reason": "autonomous mode" }
+  ],
+  "out_of_scope_seed": [
+    "Changing the wave-state.json schema version",
+    "Touching /stx-fix"
+  ],
+  "out_of_scope": [
+    "Changing the wave-state.json schema version",
+    "Touching /stx-fix",
+    "Rewriting the shared style block"
+  ],
+  "vitest_installed": "not-needed",
+  "next_action": "Review result.html, then run /stx-checkin to commit.",
+  "features": [
+    {
+      "id": "F1",
+      "title": "Deterministic artifact rendering",
+      "actor": "Wave orchestrator",
+      "acceptance_criteria": [
+        "Running `stx-feature render <wave-dir>` writes every artifact with state behind it.",
+        "A rendered artifact contains no unresolved template tokens.",
+        "Re-running the renderer produces the same file apart from the timestamp."
+      ],
+      "existing_system_impact": "The Analyst, Architect and QA personas stop writing HTML entirely; their contracts end at wave-state.json.\n\nThe orchestrator gains one shell call after each hand-back. Nothing downstream of the artifacts changes.",
+      "out_of_scope": ["The /stx-fix report renderer"],
+      "status": "done",
+      "tasks": [
+        {
+          "id": "F1-T1",
+          "title": "Template engine supporting the bundled Handlebars subset",
+          "tier": "service",
+          "scope_paths": ["src/lib/template.ts"],
+          "depends_on": [],
+          "acceptance_test_hint": "Rendering a template with a missing field throws rather than emitting a blank.",
+          "existing_patterns_to_follow": ["src/lib/version-bump.ts:1-24 — shared-lib module shape and doc header"],
+          "test_path": "tests/render-wave.test.mjs",
+          "test_kind": "vitest-unit",
+          "coverage_summary": "Asserts strict lookup, nested each blocks, and HTML escaping.",
+          "failure_output": "AssertionError: expected renderTemplate to throw on an unresolved path\n  at tests/render-wave.test.mjs:41",
+          "status": "done",
+          "iterations_used": 2,
+          "notes": "Reviewer asked for the no-scope-walking rule to be documented."
+        },
+        {
+          "id": "F1-T2",
+          "title": "Wave CLI render subcommand",
+          "tier": "service",
+          "scope_paths": ["src/skills/stx-feature.ts"],
+          "depends_on": ["F1-T1"],
+          "acceptance_test_hint": "Rendering the sample wave writes five files and leaves no '{{' behind.",
+          "existing_patterns_to_follow": ["src/skills/stx-worktree-report.ts:45-75 — CLI flag parsing"],
+          "test_path": "tests/render-wave.test.mjs",
+          "test_kind": "vitest-unit",
+          "coverage_summary": "Renders the fixture wave and inspects every produced artifact.",
+          "failure_output": "Error: No wave-state.json in tests/fixtures",
+          "status": "done",
+          "iterations_used": 1,
+          "notes": ""
+        }
+      ]
+    },
+    {
+      "id": "F2",
+      "title": "Per-wave codebase map",
+      "actor": "Every spawned agent",
+      "acceptance_criteria": [
+        "The map is built once per wave before any agent spawns.",
+        "It degrades gracefully on a repo with no app/ or components/ tree."
+      ],
+      "existing_system_impact": "Agents read one file instead of re-walking the repository.",
+      "out_of_scope": [],
+      "status": "done",
+      "tasks": [
+        {
+          "id": "F2-T1",
+          "title": "codebase-map.md generator",
+          "tier": "service",
+          "scope_paths": ["src/skills/stx-feature.ts"],
+          "depends_on": ["F1-T2"],
+          "acceptance_test_hint": "Generating a map for this repo names the src/ tree and the shipped skills.",
+          "existing_patterns_to_follow": ["src/cli/install.ts:200-245 — recursive directory handling"],
+          "test_path": "tests/render-wave.test.mjs",
+          "test_kind": "vitest-unit",
+          "coverage_summary": "Builds a map for the repo root and checks the expected sections exist.",
+          "failure_output": "AssertionError: map is missing a '## Components' section",
+          "status": "done",
+          "iterations_used": 1,
+          "notes": ""
+        },
+        {
+          "id": "F2-T2",
+          "title": "Browser-verify the rendered result page",
+          "tier": "ui",
+          "scope_paths": [".claude/skills/stx-feature/templates/result.html"],
+          "depends_on": ["F1-T2"],
+          "acceptance_test_hint": "Every status badge in result.html resolves to a real CSS class.",
+          "existing_patterns_to_follow": [".claude/skills/stx-feature/templates/_styles.html:134-160 — status badge classes"],
+          "test_path": null,
+          "test_kind": null,
+          "test_unwritable": {
+            "reason": "Visual confirmation of badge colours needs a human eye on a rendered page.",
+            "manual_protocol": "Open the rendered result.html and confirm every badge in §2-§5 has a background colour rather than falling back to unstyled text."
+          },
+          "status": "skipped",
+          "iterations_used": 0,
+          "notes": "Manual check only."
+        }
+      ]
+    }
+  ],
+  "suspicious": [
+    {
+      "at": "2026-09-01T11:02:00Z",
+      "task_id": "F1-T1",
+      "dev_id": "dev-service-01",
+      "kind": "scope-drift",
+      "description": "Dev touched src/skills/stx-feature.ts while working F1-T1, whose scope is src/lib/template.ts.",
+      "resolution": "accepted"
+    }
+  ],
+  "escalations": [
+    {
+      "n": 1,
+      "task_id": "F1-T1",
+      "at": "2026-09-01T11:15:00Z",
+      "trigger": "soft-cap-hit",
+      "architect_summary": "Split the engine's parse and render phases so the strictness rule could be tested on its own."
+    }
+  ],
+  "reviewer_verdicts": [
+    {
+      "task_id": "F1-T1",
+      "iteration": 1,
+      "at": "2026-09-01T10:40:00Z",
+      "approved": false,
+      "verdict": "concerns",
+      "diff_summary": { "files_in_scope": ["src/lib/template.ts"], "files_out_of_scope": [], "lines_added": 180, "lines_removed": 0 },
+      "concerns": [
+        { "kind": "comment-debt", "file": "src/lib/template.ts", "line": 12, "summary": "The no-scope-walking rule is load-bearing and undocumented.", "severity": "medium" },
+        { "kind": "smell", "summary": "Silent fallback when a path resolves to undefined.", "severity": "high" }
+      ],
+      "suggested_revisions": ["Document why lookups do not walk up scopes.", "Throw on an unresolved path."]
+    },
+    {
+      "task_id": "F1-T1",
+      "iteration": 2,
+      "at": "2026-09-01T11:20:00Z",
+      "approved": true,
+      "verdict": "approved",
+      "concerns": [],
+      "suggested_revisions": []
+    },
+    {
+      "task_id": "F1-T2",
+      "iteration": 1,
+      "at": "2026-09-01T11:45:00Z",
+      "approved": true,
+      "verdict": "approved",
+      "concerns": [],
+      "suggested_revisions": []
+    }
+  ],
+  "files_touched": [
+    { "path": "src/lib/template.ts", "add": 214, "del": 0 },
+    { "path": "src/skills/stx-feature.ts", "add": 631, "del": 0 }
+  ],
+  "agents_spawned": { "analyst": 1, "architect": 2, "qa": 1, "reviewer": 3, "dev": 4 },
+  "persona_versions": {
+    "analyst": "1.11.2",
+    "architect": "1.11.2",
+    "qa": "1.11.2",
+    "reviewer": "1.11.2",
+    "dev_base": "1.11.2",
+    "dev_tier_db": "1.11.2",
+    "dev_tier_service": "1.11.2",
+    "dev_tier_api": "1.11.2",
+    "dev_tier_ui": "1.11.2"
+  }
+}

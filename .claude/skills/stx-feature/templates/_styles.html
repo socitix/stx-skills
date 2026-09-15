@@ -130,6 +130,10 @@
   .tier-service { background: var(--tier-service); }
   .tier-api { background: var(--tier-api); }
   .tier-ui { background: var(--tier-ui); }
+  /* qa-verse.html reuses the tier badge for test kinds */
+  .tier-playwright { background: var(--tier-ui); }
+  .tier-e2e { background: var(--tier-api); }
+  .tier-vitest-unit { background: var(--tier-service); }
 
   .status {
     display: inline-block;
@@ -150,6 +154,19 @@
   .status-dev-wave { background: var(--amber-soft); color: var(--amber); }
   .status-halted-at-cap,
   .status-blocked { background: var(--red-bg); color: var(--red); }
+  /* task statuses with no work behind them */
+  .status-skipped,
+  .status-paused { background: var(--hairline); color: var(--muted); }
+  /* reviewer verdicts (result.html badges the boolean "approved" field) */
+  .status-true { background: var(--green-bg); color: var(--green); }
+  .status-false { background: var(--amber-soft); color: var(--amber); }
+  /* suspicious[] resolutions */
+  .status-resolved { background: var(--green-bg); color: var(--green); }
+  .status-accepted { background: var(--hairline); color: var(--text); }
+  .status-open { background: var(--amber-soft); color: var(--amber); }
+  /* gates[] audit rows */
+  .status-user-approved { background: var(--green-bg); color: var(--green); }
+  .status-auto-approved { background: var(--amber-soft); color: var(--amber); }
 
   table {
     width: 100%;

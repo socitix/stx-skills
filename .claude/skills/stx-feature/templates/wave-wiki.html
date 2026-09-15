@@ -27,25 +27,27 @@
   Rows are sorted by started_at DESCENDING (most recent wave first). Every wave
   directory is listed regardless of status, so this doubles as a live dashboard.
 
-  PLACEHOLDERS:
-    {{GENERATED_AT}}             ISO timestamp of this rebuild
-    {{WAVE_COUNT}}               total number of wave directories found
-    {{DONE_COUNT}}               count where status == done
-    {{ACTIVE_COUNT}}             count where status in {planning,gate-1,gate-2,gate-3,dev-wave}
-    {{HALTED_COUNT}}             count where status in {halted-at-cap,blocked}
-    {{#each waves}}              one row per docs/waves/wave-*/wave-state.json, started_at DESC
-                                 (fix-*/ folders are excluded — see fix-wiki.html)
-      {{wave_id}}                wave-<slug>-<4char>  (also the directory name)
-      {{wave_slug}}
-      {{status}}                 planning | gate-1 | gate-2 | gate-3 | dev-wave | done | halted-at-cap | blocked
-      {{started_at}}
-      {{finished_at}}            "—" when null
-      {{initial_request_short}}  initial_request, trimmed to ~140 chars
-      {{features_done}}          count of features with status == done
-      {{features_total}}         features.length
-      {{link}}                   "./{{wave_id}}/result.html" when result.html exists,
-                                 else "./{{wave_id}}/" (the wave directory)
-    {{/each}}
+  PLACEHOLDERS — context built by buildWikiContext in src/skills/stx-feature.ts.
+  Engine: the Handlebars subset in src/lib/template.ts (see requirement-verse.html).
+
+    GENERATED_AT               ISO timestamp of this rebuild
+    WAVE_COUNT                 total number of wave directories found
+    DONE_COUNT                 count where status == done
+    ACTIVE_COUNT               count where status in {planning,gate-1,gate-2,gate-3,dev-wave}
+    HALTED_COUNT               count where status in {halted-at-cap,blocked}
+    waves[]                    one row per docs/waves/wave-*/wave-state.json,
+                               started_at DESC:
+      wave_id                  wave-<slug>-<4char>  (also the directory name)
+      wave_slug
+      status                   planning | gate-1 | gate-2 | gate-3 | dev-wave
+                               | done | halted-at-cap | blocked
+      started_at
+      finished_at              "—" when null
+      initial_request_short    initial_request, trimmed to ~140 chars
+      features_done            count of features with status == done
+      features_total           features.length
+      link                     "./<wave_id>/result.html" when result.html exists,
+                               else "./<wave_id>/" (the wave directory)
 ================================================================================
 -->
 <html lang="en">
@@ -53,7 +55,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Wave Wiki — all /stx-feature waves</title>
-{{INLINE_STYLES}}
+{{{INLINE_STYLES}}}
 </head>
 <body>
 <div class="wrap">

@@ -1,25 +1,29 @@
 <!doctype html>
 <!--
 ================================================================================
-  requirement-verse.html — Analyst (Agent 1) output template.
+  requirement-verse.html — Gate 1 artifact.
 
-  Rendered after Gate 1 from wave-state.json. Each Feature is one kanban card
-  with acceptance criteria, actor, existing-system impact, and out-of-scope.
+  DETERMINISTICALLY RENDERED. The Analyst writes features[] into wave-state.json
+  and nothing else; the orchestrator renders this file with
 
-  PLACEHOLDERS:
-    {{WAVE_ID}}                  e.g. wave-admin-multi-delete-7f3a
-    {{WAVE_SLUG}}                e.g. admin-multi-delete
-    {{GENERATED_AT}}             ISO timestamp
-    {{INITIAL_REQUEST}}          original user description (multiline)
-    {{OUT_OF_SCOPE_SEED}}        rendered as a bullet list
-    {{#each features}}           iterate wave-state.json.features
-      {{id}}                     e.g. F1
-      {{title}}
-      {{actor}}
-      {{acceptance_criteria}}    rendered as a numbered list (HTML <ol>)
-      {{existing_system_impact}} multi-paragraph HTML
-      {{out_of_scope}}           rendered as a bullet list
-    {{/each}}
+      node .claude/skills/stx-feature/stx-feature.js render <wave-dir>
+
+  Never hand-edit a rendered artifact — edit wave-state.json and re-render.
+
+  Engine: the Handlebars subset in src/lib/template.ts —
+    escaped interpolation, raw interpolation (triple brace),
+    "each" blocks over arrays ("." is the scalar item), "if" blocks.
+    Lookups do NOT walk up to enclosing scopes; a field the current item
+    lacks is a hard render error.
+
+  CONTEXT (built by buildRequirementContext in src/skills/stx-feature.ts):
+    WAVE_ID, WAVE_SLUG, GENERATED_AT
+    INITIAL_REQUEST_HTML      raw — initial_request as paragraphs
+    out_of_scope_seed[]       strings
+    features[]                id, title, status, actor,
+                              acceptance_criteria[] (strings),
+                              existing_system_impact_html (raw),
+                              out_of_scope[] (strings)
 ================================================================================
 -->
 <html lang="en">
@@ -27,12 +31,12 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Requirement Verse — {{WAVE_ID}}</title>
-{{INLINE_STYLES}}
+{{{INLINE_STYLES}}}
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="eyebrow">Wave artifact · written by Agent 1 (Analyst)</div>
+    <div class="eyebrow">Wave artifact · rendered from wave-state.json (Analyst phase)</div>
     <h1>Requirement Verse</h1>
     <div class="meta">
       <code>{{WAVE_ID}}</code> · slug <code>{{WAVE_SLUG}}</code> · generated <code>{{GENERATED_AT}}</code>
@@ -41,14 +45,14 @@
 
   <h2><span class="num">§1</span> Initial request</h2>
   <div class="card">
-    <p>{{INITIAL_REQUEST}}</p>
+    {{{INITIAL_REQUEST_HTML}}}
   </div>
 
   <h2><span class="num">§2</span> Out of scope (seed)</h2>
   <div class="note">
     These were declared off-limits at wave start. The Architect may add more at Gate 2; after Gate 2 closes the list is frozen for the wave.
   </div>
-  <ul>{{OUT_OF_SCOPE_SEED}}</ul>
+  <ul>{{#each out_of_scope_seed}}<li>{{.}}</li>{{/each}}</ul>
 
   <h2><span class="num">§3</span> Features</h2>
   <p>Each card below is one Feature. Acceptance criteria are numbered so QA can map a failing test to each numbered item.</p>
@@ -60,7 +64,7 @@
         <span class="card-id">{{id}}</span>
         <h3 class="card-title" style="margin-top:4px">{{title}}</h3>
       </div>
-      <span class="status status-todo">{{status}}</span>
+      <span class="status status-{{status}}">{{status}}</span>
     </div>
 
     <div class="meta-row">
@@ -68,13 +72,13 @@
     </div>
 
     <h3>Acceptance criteria</h3>
-    <ol>{{acceptance_criteria}}</ol>
+    <ol>{{#each acceptance_criteria}}<li>{{.}}</li>{{/each}}</ol>
 
     <h3>Existing system impact</h3>
-    {{existing_system_impact}}
+    {{{existing_system_impact_html}}}
 
     <h3>Out of scope (specific to this Feature)</h3>
-    <ul>{{out_of_scope}}</ul>
+    <ul>{{#each out_of_scope}}<li>{{.}}</li>{{/each}}</ul>
   </div>
   {{/each}}
 
