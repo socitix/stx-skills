@@ -1,39 +1,29 @@
 <!doctype html>
 <!--
 ================================================================================
-  architecture-verse.html — Architect (Agent 2) output template.
+  architecture-verse.html — Gate 2 artifact.
 
-  Rendered after Gate 2 from wave-state.json. Each Feature is shown with its
-  Tasks underneath, each Task tier-tagged with scope_paths and dependencies.
+  DETERMINISTICALLY RENDERED. The Architect writes tasks[] into wave-state.json
+  and nothing else; the orchestrator renders this file with
 
-  A "Revisions" section is appended whenever the Architect is re-engaged
-  mid-wave (soft-cap escalation). Revisions are additive — never overwrite.
+      node .claude/skills/stx-feature/stx-feature.js render <wave-dir>
 
-  PLACEHOLDERS:
-    {{WAVE_ID}}
-    {{WAVE_SLUG}}
-    {{GENERATED_AT}}
-    {{OUT_OF_SCOPE_FROZEN}}      rendered as a bullet list (seed + Architect additions)
-    {{#each features}}
-      {{id}}                     F1, F2, ...
-      {{title}}
-      {{#each tasks}}            tasks for this feature
-        {{id}}                   F1-T1, F1-T2, ...
-        {{title}}
-        {{tier}}                 db | service | api | ui
-        {{depends_on}}           comma-separated task IDs
-        {{scope_paths}}          rendered as bullet list of file globs
-        {{acceptance_test_hint}}
-        {{existing_patterns_to_follow}}  bullet list with file:line citations
-      {{/each}}
-    {{/each}}
-    {{#each revisions}}          empty initially; populated on escalation
-      {{n}}
-      {{task_id}}
-      {{at}}                     timestamp
-      {{reason}}
-      {{amendment}}              what the Architect changed
-    {{/each}}
+  Never hand-edit a rendered artifact — edit wave-state.json and re-render.
+
+  §3 Revisions is DERIVED from wave-state.json escalations[], so the "append a
+  Revision, never overwrite the original task" rule is enforced by construction:
+  the Architect appends an escalation entry and the section follows.
+
+  Engine: the Handlebars subset in src/lib/template.ts (see requirement-verse.html).
+
+  CONTEXT (built by buildArchitectureContext in src/skills/stx-feature.ts):
+    WAVE_ID, WAVE_SLUG, GENERATED_AT
+    out_of_scope_frozen[]     strings
+    features[]                id, title, tasks[]
+      tasks[]                 id, title, tier, depends_on_label,
+                              scope_paths[], acceptance_test_hint,
+                              existing_patterns_to_follow[]
+    revisions[]               n, task_id, at, reason, amendment
 ================================================================================
 -->
 <html lang="en">
@@ -41,12 +31,12 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Architecture Verse — {{WAVE_ID}}</title>
-{{INLINE_STYLES}}
+{{{INLINE_STYLES}}}
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="eyebrow">Wave artifact · written by Agent 2 (Architect)</div>
+    <div class="eyebrow">Wave artifact · rendered from wave-state.json (Architect phase)</div>
     <h1>Architecture Verse</h1>
     <div class="meta">
       <code>{{WAVE_ID}}</code> · slug <code>{{WAVE_SLUG}}</code> · generated <code>{{GENERATED_AT}}</code>
@@ -57,7 +47,7 @@
   <div class="danger">
     After Gate 2 closes, anything below is off-limits. Dev agents may NOT touch these areas regardless of how convenient a "while I'm here" change would be. Violations are logged to <code>suspicious[]</code> in wave-state.json.
   </div>
-  <ul>{{OUT_OF_SCOPE_FROZEN}}</ul>
+  <ul>{{#each out_of_scope_frozen}}<li>{{.}}</li>{{/each}}</ul>
 
   <h2><span class="num">§2</span> Features and Tasks</h2>
   <p>Each Feature decomposes into one or more Tasks. Each Task is tier-tagged, declares the files it may touch (<code>scope_paths</code>), and points to existing patterns it must mirror.</p>
@@ -92,16 +82,16 @@
                 <summary style="cursor:pointer;color:var(--muted);font-size:13px">scope_paths · acceptance hint · patterns</summary>
                 <div style="margin-top:10px">
                   <strong style="font-size:12.5px;color:var(--muted)">SCOPE PATHS</strong>
-                  <ul class="scope-paths">{{scope_paths}}</ul>
+                  <ul class="scope-paths">{{#each scope_paths}}<li>{{.}}</li>{{/each}}</ul>
                   <strong style="font-size:12.5px;color:var(--muted)">ACCEPTANCE TEST HINT (for QA)</strong>
                   <p>{{acceptance_test_hint}}</p>
                   <strong style="font-size:12.5px;color:var(--muted)">EXISTING PATTERNS TO FOLLOW</strong>
-                  <ul>{{existing_patterns_to_follow}}</ul>
+                  <ul>{{#each existing_patterns_to_follow}}<li>{{.}}</li>{{/each}}</ul>
                 </div>
               </details>
             </div>
           </td>
-          <td><code>{{depends_on}}</code></td>
+          <td><code>{{depends_on_label}}</code></td>
         </tr>
         {{/each}}
       </tbody>
@@ -110,7 +100,7 @@
   {{/each}}
 
   <h2><span class="num">§3</span> Revisions</h2>
-  <p>The Architect is re-engaged when a task hits the soft-cap (same task failed N times). Each re-engagement adds a Revision below — it never overwrites the original task definition.</p>
+  <p>The Architect is re-engaged when a task hits the soft-cap (same task failed N times). Each re-engagement appends an entry to <code>escalations[]</code>, which renders as a Revision below — the original task definition above is never overwritten.</p>
 
   {{#each revisions}}
   <div class="card">

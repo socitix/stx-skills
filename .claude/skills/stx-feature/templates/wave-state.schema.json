@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/socitix/stx-skills/stx-feature/wave-state.schema.json",
   "title": "wave-state.json",
-  "description": "Canonical state for one /stx-feature wave. HTML artifacts are rendered from this file.",
+  "description": "Canonical state for one /stx-feature wave. Agents write ONLY this file; every HTML artifact (requirement-verse, architecture-verse, qa-verse, result, wave-wiki) is rendered from it deterministically by `stx-feature render <wave-dir>`. Never hand-edit a rendered artifact — change this file and re-render. Fields the templates compute at render time (Revisions from escalations[], reviewer_rejection_count from reviewer_verdicts[], total iterations, agent tallies) are deliberately NOT stored here, so they cannot drift.",
   "type": "object",
   "required": ["wave_id", "wave_slug", "status", "initial_request", "features", "config", "persona_versions"],
   "properties": {
@@ -75,10 +75,23 @@
         }
       }
     },
+    "out_of_scope_seed": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "The out-of-scope items declared at wave start, before the Analyst or Architect added any. Rendered as §2 of requirement-verse.html. Written once at Step 1 and never amended — out_of_scope is the growing list."
+    },
     "out_of_scope": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Frozen at Gate 2. Seed (from interview) + Analyst additions + Architect additions."
+      "description": "Frozen at Gate 2. Seed (from interview) + Analyst additions + Architect additions. Rendered as §1 of architecture-verse.html."
+    },
+    "vitest_installed": {
+      "enum": ["yes", "no", "not-needed"],
+      "description": "Written by QA at Step 4. Whether Vitest ended up configured in the consuming project for this wave. Rendered into the qa-verse.html header."
+    },
+    "next_action": {
+      "type": "string",
+      "description": "Written by the orchestrator at Step 8. One line telling the user what to do next (e.g. \"Run /stx-checkin to commit, then /stx-pr-merge to ship.\"). Rendered into §1 of result.html."
     },
     "features": {
       "type": "array",
@@ -108,6 +121,17 @@
                 "existing_patterns_to_follow": { "type": "array", "items": { "type": "string" } },
                 "test_path": { "type": ["string", "null"] },
                 "test_kind": { "enum": ["playwright", "e2e", "vitest-unit", null] },
+                "coverage_summary": { "type": "string", "description": "Written by QA at Step 4. One sentence: what does this task's test assert? Rendered into the qa-verse.html row for this task." },
+                "failure_output": { "type": "string", "description": "Written by QA at Step 4. The failing-run output for this task's test, trimmed to the assertion that fails plus enough context to show it fails for the RIGHT reason — not the whole runner dump. Rendered into the collapsed <details> in qa-verse.html." },
+                "test_unwritable": {
+                  "type": "object",
+                  "description": "Written by QA at Step 4 INSTEAD of test_path when no automated test can be authored for this task (timing-sensitive, infra-dependent, etc.). Its presence moves the task into qa-verse.html §2 and is surfaced to the user rather than silently skipped.",
+                  "required": ["reason", "manual_protocol"],
+                  "properties": {
+                    "reason": { "type": "string" },
+                    "manual_protocol": { "type": "string", "description": "Proposed manual verification steps." }
+                  }
+                },
                 "status": { "enum": ["todo", "in-progress", "done", "halted", "skipped", "paused"] },
                 "iterations_used": { "type": "integer", "minimum": 0 },
                 "notes": { "type": "string" }
@@ -135,7 +159,7 @@
     },
     "escalations": {
       "type": "array",
-      "description": "Each soft-cap trip that re-engaged the Architect.",
+      "description": "Each soft-cap trip that re-engaged the Architect. Also the SOURCE of the Revisions section (§3) of architecture-verse.html — the Architect appends an entry here instead of editing the rendered HTML, which is what makes \"append a Revision, never overwrite the task\" structurally impossible to violate.",
       "items": {
         "type": "object",
         "required": ["n", "task_id", "at", "trigger"],
