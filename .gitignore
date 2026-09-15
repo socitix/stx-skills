@@ -24,3 +24,6 @@ npm-debug.log*
 
 # Test coverage
 coverage/
+
+# Git worktrees (local checkouts — never committed)
+.claude/worktrees/

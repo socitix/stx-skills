@@ -51,7 +51,7 @@ Editing `package.json` is non-destructive and falls under the chained skill appr
 - Open a PR. Use [`/stx-checkin`](../stx-checkin/SKILL.md) or [`/stx-pr-merge`](../stx-pr-merge/SKILL.md).
 - Push the commit or the tag. Intentional — `git push --follow-tags` or `/stx-pr-merge`'s STEP 5b owns "shipping".
 - Touch any file other than `package.json` (+ `package-lock.json` if present, or the `--version-file` path).
-- Bump per-skill `SKILL.md`/`catalog.json` versions inside this repo. Those are independent SemVers (see [CLAUDE.md](../../../CLAUDE.md) "Versioning") and must be bumped by hand when their semantics change.
+- Stamp the bumped version into anything other than the version source. Repos that mirror `package.json` into other files own that step themselves — in `stx-skills` it is `npm run build` (`sync-versions`), which stamps every shipped `SKILL.md` + `catalog.json` and every `.claude/agents/*.md` persona, plus `README.md`. Run that build after this skill's bump and amend the stamped files into the release commit, or `npm run check-docs` fails on the drift. Never hand-edit a `version:` field.
 
 ## Halt conditions
 
@@ -116,4 +116,4 @@ The skill prints a one-line pointer to this section when it doesn't detect any v
 
 - [`/stx-pr-merge`](../stx-pr-merge/SKILL.md) — the full chain; bumps inline at STEP 1b, tags + pushes at STEP 5b
 - [`/stx-checkin`](../stx-checkin/SKILL.md) — commit + push without merge or version bump
-- [CLAUDE.md](../../../CLAUDE.md) — project policy: catalog.json + SKILL.md must stay in sync; skill versions are independent of the package version
+- [CLAUDE.md](../../../CLAUDE.md) — project policy: catalog.json + SKILL.md must stay in sync; unified versioning — `package.json` is the single source of truth and every skill + persona carries that same version, stamped by `npm run build`
