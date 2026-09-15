@@ -72,6 +72,11 @@
         "kind": "callout",
         "tone": "teal",
         "html": "Tag is created <strong>locally only</strong>. Push when you ship — <code>/stx-pr-merge</code> does this automatically at STEP 5b, or run <code>git push origin vX.Y.Z</code> by hand."
+      },
+      {
+        "kind": "paragraph",
+        "title": "Repos that mirror the version",
+        "html": "This skill touches only the version source (<code>package.json</code> or <code>--version-file</code>). In a repo that stamps that version into other files — <code>stx-skills</code> mirrors it into every shipped <code>SKILL.md</code> + <code>catalog.json</code>, every persona, and <code>README.md</code> via <code>npm run build</code> — run that build after the bump and amend the stamped files into the release commit, or the docs check fails on the drift. Never hand-edit a <code>version:</code> field."
       }
     ]
   }

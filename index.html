@@ -1910,6 +1910,9 @@
           <p>The auto-policy never infers <code>minor</code> or <code>major</code> on its own — those require an explicit positional <code>minor</code>/<code>major</code> or <code>--bump minor</code>/<code>--bump major</code>. <code>!</code>/<code>BREAKING CHANGE:</code> markers are the one exception (they signal <code>major</code> deliberately).</p>
 
           <div class="callout callout-teal">Tag is created <strong>locally only</strong>. Push when you ship — <code>/stx-pr-merge</code> does this automatically at STEP 5b, or run <code>git push origin vX.Y.Z</code> by hand.</div>
+
+          <h4>Repos that mirror the version</h4>
+          <p>This skill touches only the version source (<code>package.json</code> or <code>--version-file</code>). In a repo that stamps that version into other files — <code>stx-skills</code> mirrors it into every shipped <code>SKILL.md</code> + <code>catalog.json</code>, every persona, and <code>README.md</code> via <code>npm run build</code> — run that build after the bump and amend the stamped files into the release commit, or the docs check fails on the drift. Never hand-edit a <code>version:</code> field.</p>
         </div>
       </details>
 
