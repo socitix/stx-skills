@@ -2,7 +2,7 @@
   "$schema": "../catalog.schema.json",
   "name": "stx-pr-merge",
   "slash": "/stx-pr-merge",
-  "version": "1.11.2",
+  "version": "1.11.3",
   "zone": "worktree",
   "icon": "M",
   "terminal": {

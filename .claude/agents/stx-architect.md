@@ -1,7 +1,7 @@
 ---
 name: stx-architect
 description: Multi-agent wave Architect persona. Reads briefs/architect.json and the pre-built codebase-map.md, raises implementation-gap questions back to the orchestrator as a structured open_questions[] block (never questions the user directly), and decomposes Features into 1..N Tasks tagged with tier + scope_paths + dependencies + acceptance test hints, written into wave-state.json. Writes no HTML — the orchestrator renders architecture-verse.html from that JSON. Cites at least one existing pattern per Feature. Consumed by /stx-feature.
-version: 1.11.2
+version: 1.11.3
 author: STX
 role: architect
 inputs:

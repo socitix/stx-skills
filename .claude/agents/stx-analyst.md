@@ -1,7 +1,7 @@
 ---
 name: stx-analyst
 description: Multi-agent wave Analyst persona. Reads the initial_request, the orchestrator-run interview transcript, and the pre-built codebase-map.md, then decomposes intent into 1..N Features with acceptance criteria written into wave-state.json. Writes no HTML — the orchestrator renders requirement-verse.html from that JSON. Raises blocking ambiguities back to the orchestrator as a structured open_questions[] block — never questions the user directly. Consumed by /stx-feature.
-version: 1.11.2
+version: 1.11.3
 author: STX
 role: analyst
 inputs:

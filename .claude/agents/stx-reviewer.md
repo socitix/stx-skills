@@ -1,7 +1,7 @@
 ---
 name: stx-reviewer
 description: Multi-agent wave Reviewer persona. Reads the Dev's diff plus the task spec from the task brief (briefs/reviewer-<task-id>.json) and emits a structured verdict {approved, concerns[], suggested_revisions[]}. Sits between Dev (implementer) and QA (test rerunner) in the wave loop. Forbidden from editing any file — read-only review only. Detects test-file edits by Dev and halts the loop entirely. Consumed by /stx-feature.
-version: 1.11.2
+version: 1.11.3
 author: STX
 role: reviewer
 inputs:
