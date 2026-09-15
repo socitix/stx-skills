@@ -154,15 +154,19 @@ All artifacts for this wave live in:
 docs/waves/
 ├── wave-wiki.html           # cross-wave index — rebuilt at end of EVERY wave (Step 9)
 └── wave-{{wave_slug}}-<4-char-random>/
-    ├── wave-state.json          # canonical state — features, tasks, suspicious[], escalations[]
-    ├── requirement-verse.html   # written by Analyst (Agent 1) at Gate 1
-    ├── architecture-verse.html  # written by Architect (Agent 2) at Gate 2
-    ├── qa-verse.html            # written by QA (Agent 3) at Gate 3
-    ├── result.html              # written by orchestrator at end of wave
+    ├── wave-state.json          # canonical state — the ONLY file agents write
+    ├── codebase-map.md          # built once at Step 1.6 by `stx-feature map`
+    ├── briefs/                  # per-role slices of wave-state.json (`stx-feature brief`)
+    ├── requirement-verse.html   # RENDERED from state at Gate 1
+    ├── architecture-verse.html  # RENDERED from state at Gate 2
+    ├── qa-verse.html            # RENDERED from state at Gate 3
+    ├── result.html              # RENDERED from state at end of wave
     └── handoff.md               # written only if the wave halts at a cap
 ```
 
-Generate the 4-char-random suffix once at wave start. Persist it in `wave-state.json.wave_id`. `wave-wiki.html` is the only artifact shared across waves; it is regenerated from every `wave-state.json` and never hand-edited.
+Generate the 4-char-random suffix once at wave start. Persist it in `wave-state.json.wave_id`.
+
+**Every `.html` above is rendered, never authored.** Agents write `wave-state.json`; you render with `stx-feature render docs/waves/<wave-id>` after each hand-back and after each state change in the Dev loop. Resolve the binary as `node .claude/skills/stx-feature/stx-feature.js`, falling back to `npx stx-feature`. Never hand-edit a rendered artifact — change the state and re-render. `wave-wiki.html` is the only artifact shared across waves; it is regenerated from every `wave-state.json` and never hand-edited.
 
 ## 4. Agent roles
 
@@ -171,14 +175,14 @@ Generate the 4-char-random suffix once at wave start. Persist it in `wave-state.
 **Goal:** turn `initial_request` into a numbered list of **Features**, each with acceptance criteria and existing-system blast radius. The Analyst does not design solutions — only defines the problem.
 
 **Contract:**
-1. Read `initial_request`. Survey the consuming codebase enough to understand what data, flows, and components the feature touches.
+1. Read `initial_request`. Read `codebase-map.md` in the wave directory — a pre-built index of the consuming codebase — and open only the files it points at.
 2. Interview the user via `AskUserQuestion`, grouped into 2–4 questions per call:
    - Who is the user / actor for each part of the feature?
    - What's the acceptance criteria (numbered, testable)?
    - Which existing flows / data / permissions are impacted?
    - What's NOT this feature (extends out_of_scope_seed)?
 3. Decompose into 1..N Features. Each Feature has: `id` (F1, F2, ...), `title`, `actor`, `acceptance_criteria[]`, `existing_system_impact`, `out_of_scope[]`.
-4. Write Features into `wave-state.json`. Render `requirement-verse.html` from the bundled template at `templates/requirement-verse.html`.
+4. Write Features into `wave-state.json` — **and no HTML**. The orchestrator renders `requirement-verse.html` from that JSON.
 5. Surface to orchestrator: "Analyst phase complete — Gate 1 ready for user approval."
 
 **Hard rules:**
@@ -191,7 +195,7 @@ Generate the 4-char-random suffix once at wave start. Persist it in `wave-state.
 **Goal:** turn each Feature into a numbered list of **Tasks**, each tagged with `tier`, `scope_paths`, `depends_on`, and `acceptance_test_hint`. The Architect maps the change across application tiers and explicitly cites existing patterns to follow.
 
 **Contract:**
-1. Read `requirement-verse.html`, `wave-state.json`, the consuming project's `CLAUDE.md`, and `~/.claude/CODING_REFERENCE.md` if it exists.
+1. Read `briefs/architect.json` and `codebase-map.md` — NOT `requirement-verse.html`, which is rendered from the same data. Also the consuming project's `CLAUDE.md`, and `~/.claude/CODING_REFERENCE.md` if it exists.
 2. Interview the user **only for implementation-strategy gaps** — do NOT re-ask anything in `requirement-verse.html`.
 3. For each Feature, decompose into 1..N Tasks, each with:
    - `id` (e.g. `F1-T1`)
@@ -202,7 +206,7 @@ Generate the 4-char-random suffix once at wave start. Persist it in `wave-state.
    - `acceptance_test_hint`: one-paragraph instruction to QA on what to test
    - `existing_patterns_to_follow`: bullet list naming concrete files / patterns this task should mirror (must cite at least one)
 4. Encourage **decoupled, simplistic, reusable** patterns. Prefer extension of existing code over creating parallel implementations. Cite the file:line of the pattern.
-5. Write Tasks into `wave-state.json`. Render `architecture-verse.html` from the bundled template.
+5. Write Tasks into `wave-state.json` — **and no HTML**. The orchestrator renders `architecture-verse.html` from that JSON.
 6. Surface to orchestrator: "Architect phase complete — Gate 2 ready for user approval."
 
 **Hard rules:**
@@ -215,7 +219,7 @@ Generate the 4-char-random suffix once at wave start. Persist it in `wave-state.
 **Goal:** write **failing** tests, one per task, in the right runner for the task's tier. Each test maps to exactly one task ID.
 
 **Contract:**
-1. Read `requirement-verse.html`, `architecture-verse.html`, `wave-state.json`.
+1. Read `briefs/qa.json` and `codebase-map.md` — NOT the rendered verse files.
 2. For each task, decide test kind:
    - `playwright` for `tier == "ui"` workflow
    - `e2e` for `tier == "db"` or `tier == "api"` (or service tasks that hit external resources)
@@ -227,7 +231,7 @@ Generate the 4-char-random suffix once at wave start. Persist it in `wave-state.
    - Has a header comment / JSDoc with the task ID it covers.
    - Asserts the task's `acceptance_test_hint`.
    - Fails for the right reason when run (the feature isn't built yet) — paste failure output.
-5. Update `wave-state.json` with `test_path` per task. Render `qa-verse.html`.
+5. Update `wave-state.json` per task with `test_path`, `test_kind`, `coverage_summary`, `failure_output` (or `test_unwritable`), plus the wave-level `vitest_installed` — **and no HTML**. The orchestrator renders `qa-verse.html` from those fields.
 6. Surface to orchestrator: "QA phase complete — Gate 3 ready for user approval."
 
 **Hard rules:**
@@ -247,7 +251,7 @@ Each Dev agent is spawned with one of the tier-specialized prompt preludes in `t
 
 **Contract (all tiers):**
 1. Read the failing test file mapped to this task. The test is the spec.
-2. Read `architecture-verse.html` section for this task, especially `existing_patterns_to_follow`.
+2. Read `briefs/dev-<task-id>.json` for this task, especially `existing_patterns_to_follow` and `out_of_scope_frozen`. Do NOT read `architecture-verse.html`.
 3. Implement the smallest change **inside `scope_paths`** that turns the test green.
 4. Run the test. Run `npm run lint` and `npm run build`.
 {{#if use_browser_mcp == true}}
@@ -263,7 +267,7 @@ Each Dev agent is spawned with one of the tier-specialized prompt preludes in `t
 - MUST NOT touch files outside `scope_paths` (logged to `wave-state.json.suspicious[]`; 3 events → auto-halt task).
 - MUST NOT weaken assertions or add mocks that bypass the SUT.
 - Story-style code is a writing guideline (action-named helpers, short functions). It is NOT a halt condition — QA does not reject on style.
-- Respect Out-of-scope (§2 here AND any added by Architect in `architecture-verse.html`).
+- Respect Out-of-scope (§2 here AND the `out_of_scope_frozen` list in your brief).
 
 ## 5. Scheduling rules
 
@@ -324,23 +328,15 @@ The wave is **done** when ALL of the following are true:
 
 ## 9. After done
 
-Render `result.html` from the bundled template. It must include:
+First **complete `wave-state.json`**: final `status`, `finished_at`, `files_touched[]` (deduplicated, add/del per file), `agents_spawned` per role, and `next_action` (one line on what the user should do next). The report is rendered from these fields, so anything missing here is missing from the report.
 
-- Per-feature, per-task status table (id, title, tier, iterations used, final status)
-- Total iteration count across all tasks
-- `suspicious[]` events table (one row per event: timestamp, task id, dev id, description)
-- `escalations[]` table (one row per Architect re-engagement)
-- Files touched (deduplicated list with byte deltas if cheap to compute)
-- Agents spawned (count, types) and approximate run time
-- Next-action recommendation
+Then render:
 
-Then **rebuild `docs/waves/wave-wiki.html`** from the bundled template (`templates/wave-wiki.html`). This is a full regenerate, not an append:
+```bash
+stx-feature render docs/waves/<wave-id>
+```
 
-- Scan **every** `docs/waves/wave-*/wave-state.json`, not just this wave's. `fix-*/` folders are excluded and are aggregated separately in `docs/waves/fix-wiki.html` by `/stx-fix`.
-- One row per wave: `wave_slug`, `wave_id`, `status`, `started_at`, `finished_at` (or `—`), `initial_request` trimmed to ~140 chars, and features done / total.
-- Link each row to `./<wave_id>/result.html` if that file exists, else `./<wave_id>/`.
-- Sort by `started_at` descending and render **all** waves regardless of status (the wiki doubles as a live dashboard).
-- Overwrite the file every time so it always matches the wave directories on disk.
+That writes `result.html` — gates audit trail, per-feature/per-task status with reviewer-rejection counts, the full `reviewer_verdicts[]` trail, `suspicious[]`, `escalations[]`, files touched, and the derived iteration and agent totals — and rebuilds `docs/waves/wave-wiki.html` from **every** `docs/waves/wave-*/wave-state.json` in the same pass. The wiki is a full regenerate (newest first, each row linking to that wave's `result.html` when it exists); `fix-*/` folders are excluded and aggregated separately into `docs/waves/fix-wiki.html` by `/stx-fix`.
 
 {{#if commit_policy == "no-commit"}}
 **Commit policy: no-commit.** Leave the wave's changes uncommitted. The orchestrator's final user-facing message summarizes what changed and waits for the user's commit instruction.
